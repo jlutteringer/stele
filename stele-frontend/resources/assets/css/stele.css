@@ -1,0 +1,22 @@
+.navbar-nav > li > .rc-dropdown {
+	padding: 8px 15px;
+}
+
+.navbar-nav > li > .rc-dropdown.chosen-container-active {
+	background-color: #e7e7e7;
+}
+
+.navbar-nav > li > .rc-dropdown .chosen-single {
+	background-color: initial;
+	border: none;
+	box-shadow: none;
+}
+
+.clearfix:after {
+	content: ".";
+	display: block;
+	clear: both;
+	visibility: hidden;
+	line-height: 0;
+	height: 0;
+}

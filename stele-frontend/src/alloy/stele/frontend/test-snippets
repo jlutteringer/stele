@@ -1,0 +1,46 @@
+(re-frame/reg-event-db
+	:initialise-db
+	(fn [_ _]
+		{:test-button-clicked 0}))
+
+(re-frame/reg-event-db
+	:test-button-clicked
+	(fn [app-state [_]]
+		(assoc app-state :test-button-clicked (inc (:test-button-clicked app-state)))))
+
+(re-frame/reg-sub
+	:test-button-clicked
+	(fn [app-state [_]] (:test-button-clicked app-state)))
+
+(defn nav-link [name url active?]
+	[:li {:class (if active? "nav-item active" "nav-item")}
+	 [:a {:class "nav-link" :href url} name (if active? [:span {:class "sr-only"} "(current)"])]])
+
+(defn search-form []
+	[:div {:class "form-inline pull-xs-right"}
+	 [:input {:class "form-control" :type "text" :placeholder "Search"}]
+	 [:button {:class "btn btn-outline-success"} "Search"]])
+
+(defn nav-element [elements])
+
+(defn nav-bar []
+	[:nav {:class "navbar navbar-light bg-faded"}
+	 [:a {:class "navbar-brand" :href "#"} "Stele"]
+	 [:ul {:class "nav navbar-nav"}
+		[nav-link "Home" "#" true]
+		[nav-link "Features" "#" false]
+		[components/nav-dropdown [components/dropdown "Dropdown 1"
+															[[:li [:a {:href "#"} "Action"]]
+															 [:li [:a {:href "#"} "Action"]]
+															 [:li [:a {:href "#"} "Action"]]]]]
+		[components/dropdown test-dropdown]
+		[:li {:class "nav-item dropdown"}
+		 [:a {:href "#" :class "nav-link dropdown-toggle"} "Dropdown" [:span {:class "caret"}]]
+		 [:ul {:class "dropdown-menu"}
+			[:li
+			 [:a {:href "#"} "Action"]]]]]
+	 (search-form)])
+
+(defn test-button []
+	(let [test-button-num-clicked-state (re-frame/subscribe [:test-button-clicked])]
+		(fn [] [components/button @test-button-num-clicked-state {:type :primary :click #(re-frame/dispatch [:test-button-clicked])}])))
