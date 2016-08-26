@@ -44,3 +44,6 @@
 (defn test-button []
 	(let [test-button-num-clicked-state (re-frame/subscribe [:test-button-clicked])]
 		(fn [] [components/button @test-button-num-clicked-state {:type :primary :click #(re-frame/dispatch [:test-button-clicked])}])))
+
+		;#?(:clj  (defn random-uuid [] (java.util.UUID/randomUUID))
+        ;	 :cljs (defn random-uuid [] (cljs.core/random-uuid)))

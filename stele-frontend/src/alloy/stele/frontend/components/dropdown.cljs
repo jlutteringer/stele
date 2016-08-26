@@ -1,6 +1,9 @@
 (ns alloy.stele.frontend.components.dropdown
 	(:require-macros [re-com.core :refer [handler-fn]])
-	(:require [re-com.util      :refer [deref-or-value position-for-id item-for-id]]
+	(:require [cljs.spec :as spec :include-macros true]
+						[alloy.anvil.clojure.util :as util :include-macros true]
+						[alloy.stele.frontend.reagent-util :as rutil :include-macros true]
+						[re-com.util      :refer [deref-or-value position-for-id item-for-id]]
 						[re-com.box       :refer [align-style flex-child-style]]
 						[re-com.validate  :refer [vector-of-maps? css-style? html-attr? number-or-string?] :refer-macros [validate-args-macro]]
 						[clojure.string   :as    string]
@@ -185,21 +188,51 @@
 						placeholder)]
 				 [:div [:b]]])))) ;; This odd bit of markup produces the visual arrow on the right
 
-(def dropdown-args-desc
-	[{:name :label :required true :type "hiccup vector | atom" :validate-fn vector? :description "The label"}
-	 {:name :content :required true :type "hiccup vector | atom" :validate-fn vector? :description "The content"}])
+(defn ratom? [val] (fn? val))
+(defn hiccup? [val] (vector? val))
+(defn hiccup-ratom-or-str? [val] (or (ratom? val) (hiccup? val) (string? val)))
+(defn conform-boolean-ratom [val] (cond
+																(ratom? val) val
+																(boolean? val) (reagent/atom val)
+																:else util/spec-invalid))
 
-(defn dropdown [_]
-	(fn [& {:keys [label content]}]
-		[:div "WIP"]))
+(spec/def ::label hiccup-ratom-or-str?)
+(spec/def ::content hiccup-ratom-or-str?)
+(spec/def ::open-state (spec/conformer conform-boolean-ratom))
+(spec/def ::dropdown (spec/keys :req-un [::label ::content]))
 
-; ideal vesion w/ macros
-;(defn create-fn [description template] ())
-;
-;(defn dropdown2 [_]
-;	(create-fn dropdown-args-desc
-;		(fn [label content]
-;			())))
+(def dropdown-schema
+	{:fields [[:label :description "This is the description"]
+						[:content :description "This is the content"]
+						[:open-state :description "Open state atom" :default false]]
+	 :spec ::dropdown})
+
+(defn dropdown [& args]
+	(rutil/build-component args dropdown-schema
+									 (fn [{:keys [label content open-state]}]
+										 label)
+									 (fn [{:keys [label content open-state]}]
+										 [:div label])))
+
+(defn empty-reaction []
+	())
+
+(defn immutable-atom [val]
+	())
+
+
+[dropdown
+ :label "Dropdown Label"
+ :open-state (reagent/atom false)]
+
+[dropdown
+ :open-state (empty-reaction)]
+
+[dropdown
+ :open-state (immutable-atom true)]
+
+[dropdown
+ :open-state true]
 
 ;;--------------------------------------------------------------------------------------------------
 ;; Component: single-dropdown

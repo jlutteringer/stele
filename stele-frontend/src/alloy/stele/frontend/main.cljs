@@ -4,5 +4,8 @@
 						[devtools.core :as devtools])
 	(:require-macros [mount.core :refer [defstate]]))
 
+(enable-console-print!)
+(print ":)..:)..:)..:)..:)")
+
 (devtools/install!)
 (app/start-app)

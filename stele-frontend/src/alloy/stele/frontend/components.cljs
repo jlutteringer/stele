@@ -9,8 +9,8 @@
 ;dropdown with arbitrary content
 (defn test-dropdown []
 	[dropdown/dropdown
-	 :label "Select"
-	 :content [[:div "This is arbitrary content"]]])
+	 :label "h"
+	 :content "This is arbitrary content"])
 
 (defn test-dropdown2 []
 	[dropdown/select
