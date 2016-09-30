@@ -6,13 +6,15 @@
 								 [re-com "0.8.3"]
 								 [reagent "0.6.0-rc"]
 								 [garden "1.3.2"]
-								 [binaryage/devtools "0.8.1"]]
+								 [binaryage/devtools "0.8.1"]
+								 [com.taoensso/timbre "4.7.0"]
+								 [com.rpl/specter "0.13.0"]]
 	:source-paths ["src"]
 
 	:cljsbuild {:builds [{:source-paths ["src"]
 												:compiler {
-																	 :output-to "resources/stele.js"
+																	 :output-to "resources/assets/js/stele.js"
 																	 :optimizations :whitespace
 																	 :pretty-print true
 																	 }}]}
-	:clean-targets ^{:protect false} [:target-path "target/assets/js"])
+	:clean-targets ^{:protect false} [:target-path "resources/assets/js"])

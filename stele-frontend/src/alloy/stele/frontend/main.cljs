@@ -5,7 +5,7 @@
 	(:require-macros [mount.core :refer [defstate]]))
 
 (enable-console-print!)
-(print ":)..:)..:)..:)..:)")
+(print ":)")
 
 (devtools/install!)
 (app/start-app)

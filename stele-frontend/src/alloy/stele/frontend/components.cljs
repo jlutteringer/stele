@@ -1,6 +1,6 @@
 (ns alloy.stele.frontend.components
 	(:require [alloy.anvil.clojure.util :as util]
-						[alloy.stele.frontend.components.dropdown :as dropdown]
+						[alloy.bessemer.components.dropdown :as dropdown]
 						[reagent.core :as reagent]
 						[reagent.impl.template :as r-template]
 						[re-frame.core :as re-frame]
@@ -9,22 +9,33 @@
 ;dropdown with arbitrary content
 (defn test-dropdown []
 	[dropdown/dropdown
-	 :label "h"
-	 :content "This is arbitrary content"])
+	 :label "Dropdown"
+	 :content "This can be arbitrary content"])
+
+(defn test-dropdown-list []
+	[dropdown/dropdown-list
+	 :label "Dropdown List"
+	 :choices [{:id "item1" :label "Item 1" :on-click #(print "clicked")} {:id "item2" :label [:a "Item 2"]}]
+	 :open-state (reagent/atom false)])
+
+(defn test-select []
+	[dropdown/select
+	 :placeholder "Select"
+	 :choices [{:id "item1" :label "Item 1"} {:id "item2" :label [:a "Item 2"]}]
+	 :open-state (reagent/atom false)])
 
 (defn test-dropdown2 []
-	[dropdown/select
+	[dropdown/select-old
 	 :choices [{:id "test" :label "Test"} {:id "test2" :label [:a "Test 2Test 2Test 2Test 2Test 2Test 2Test 2Test 2"]}]
 	 :model nil
 	 :placeholder "Select"
 	 :on-change #(js/console.log "changed")])
 
 (defn test-dropdown3 []
-	[dropdown/select
-	 :choices [{:id "test" :label "Test"} {:id "test2" :label [:a "Test 2Test 2Test 2Test 2Test 2Test 2Test 2Test 2"]}]
-	 :model nil
-	 :placeholder "Select"
-	 :on-change #(js/console.log "changed")])
+	[dropdown/dropdown
+	 :label "Label"
+	 :content "Temp Content"
+	 :open-state (reagent/atom false)])
 
 (defn as-form [element] (if (fn? element) (element) element))
 
@@ -36,12 +47,9 @@
 (defn nav-bar []
 	[:nav {:class "navbar navbar-default"}
 	 [:ul {:class "nav navbar-nav"}
-		[:li [:a "Link"]]
-		[:li [:a "Link"]]
-		[:li [:a "Link"]]
 		[nav-dropdown test-dropdown]
-		[nav-dropdown test-dropdown2]
-		[nav-dropdown test-dropdown3]]])
+		[nav-dropdown test-dropdown-list]
+		[nav-dropdown test-select]]])
 
 ;[:div {:class "navbar navbar-default"}
 ; [:div {:class "navbar-header"}

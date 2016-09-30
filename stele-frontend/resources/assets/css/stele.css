@@ -20,3 +20,7 @@
 	line-height: 0;
 	height: 0;
 }
+
+.chosen-container-single .chosen-drop {
+	width: 100%;
+}

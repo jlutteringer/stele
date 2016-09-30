@@ -84,6 +84,16 @@
       <version>0.8.1</version>
     </dependency>
     <dependency>
+      <groupId>com.taoensso</groupId>
+      <artifactId>timbre</artifactId>
+      <version>4.7.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.rpl</groupId>
+      <artifactId>specter</artifactId>
+      <version>0.13.0</version>
+    </dependency>
+    <dependency>
       <groupId>org.clojure</groupId>
       <artifactId>clojure</artifactId>
       <version>1.9.0-alpha10</version>
