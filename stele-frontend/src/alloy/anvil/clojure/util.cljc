@@ -18,15 +18,25 @@
 		arg
 		[arg]))
 
+(defn pour-map
+	[arg]
+	(if (map? arg) arg {(first arg) (second arg)}))
+
 (defn debug [arg]
-	(print arg)
+	(println arg)
 	arg)
+
+(defn to-vec [col] (into [] col))
+(defn to-set [col] (into #{} col))
 
 (defn concat-seq [& args]
 	(apply concat (map pour args)))
 
 (defn concat-vec [& args]
 	(into [] (apply concat-seq args)))
+
+(defn concat-map [& args]
+	(apply merge (map pour-map args)))
 
 (def not-zero? (complement zero?))
 (def not-nil? (complement nil?))
@@ -45,9 +55,6 @@
 				(conj result (map first remainder))))))
 
 (defn coll-contains? [col v] (boolean (some #(= v %) col)))
-
-(defn to-vec [col] (into [] col))
-(defn to-set [col] (into #{} col))
 
 (defn fn-rest [delegate]
 	(fn [& args] (apply delegate (rest args))))
@@ -166,132 +173,8 @@
 	 :args (second func)
 	 :body (drop 2 func)})
 
-(defn static-fn [result] (fn [& _] result))
+(defn valueate [x] (if (fn? x) (x) x))
+(defn ignore-args [x] (fn [& _] (valueate x)))
+(defn static-fn [result] (ignore-args result))
 
-; =====================================================================
-; =====================================================================
-; =====================================================================
-; =====================================================================
-
-;(defn args-to-map [args]
-;	(cond
-;		(seq? args)
-;		(if (= (count args) 1)
-;			(first args)
-;			(seq-to-map args))
-;		(map? args) args))
-;
-;
-;(defn schema-reified? [schema]
-;	(every? map? (:fields schema)))
-;
-;(defn reify-schema-field [schema-field]
-;	(merge {:name (first schema-field)} (seq-to-map (rest schema-field))))
-;
-;(defn make-default-pair [field default-overrides]
-;	(let [field-name (:name field)]
-;		(if (contains? default-overrides field-name)
-;			[field-name (get default-overrides field-name)]
-;			(cond
-;				(contains? field :default) [field-name (:default field)]
-;				(contains? field :default-fn) [field-name ((:default-fn field))]
-;				:else nil))))
-;
-;(defn remove-nil [col] (remove nil? col))
-;
-;(defn defaults-map [default-overrides schema]
-;	(pairs-to-map (remove-nil (map
-;														 #(make-default-pair % default-overrides)
-;														 (:fields schema)))))
-;
-;(defn build-args
-;	([args schema] (build-args args {} schema))
-;	([args default-overrides schema]
-;	 (merge (defaults-map default-overrides schema) args)))
-;
-;(defn build-default-overrides [current-args previous-args previous-conformed-args]
-;	(pairs-to-map (remove-nil (map
-;															#(let [current-val (get current-args %)
-;																		 prev-val (get previous-args %)]
-;																(if (= current-val prev-val)
-;																	[% (get previous-conformed-args %)]
-;																	nil))
-;															(keys previous-conformed-args)))))
-;
-;(defn conform-args
-;	([args schema]
-;	 (conform-args args {} schema))
-;	([args default-overrides schema]
-;	 (let [reified-schema (reify-schema schema)]
-;		 (if (nil? (:spec reified-schema))
-;			 (build-args args default-overrides reified-schema)
-;			 (conform-or-throw (:spec reified-schema)
-;												 (build-args args default-overrides reified-schema))))))
-;
-;(defn schema-fields [schema] ())
-
-;(defn build-let-vec [arg-symbol conformed-arg-symbol schema template-args]
-;	(concat-vec
-;		[conformed-arg-symbol `(conform-args (args-to-map ~arg-symbol) ~schema)]
-;		(if (nil? (first template-args))
-;			[]
-;			[(first template-args) conformed-arg-symbol])))
-
-;(defn build-fn-body-internal [arg-symbol conformed-arg-symbol schema template]
-;	(let [template-metadata (fn-metadata template)]
-;		`(let ~(build-let-vec arg-symbol conformed-arg-symbol schema (:args template-metadata))
-;			 (timbre/debug
-;				 "In template fn with schema:" ~schema "Resolved args" ~conformed-arg-symbol "from actual args" ~arg-symbol)
-;			 ~@(:body template-metadata))))
-;
-;(defmacro build-fn-body
-;	([arg-symbol schema template]
-;	 (build-fn-body-internal arg-symbol (gen-symbol) schema template))
-;	([arg-symbol conformed-arg-symbol schema template]
-;	 (build-fn-body-internal arg-symbol conformed-arg-symbol schema template)))
-;
-;(defn build-handler-fn-body-internal
-;	([arg-symbol schema handler-template]
-;		(build-handler-fn-body-internal arg-symbol schema '(fn [] {}) handler-template))
-;	([arg-symbol schema initializer-template handler-template]
-;	 (let [reified-schema (reify-schema schema)
-;				 initializer-metadata (fn-metadata initializer-template)
-;				 handler-metadata (fn-metadata handler-template)
-;				 converted-arg-symbol (gen-symbol)
-;				 outer-confomed-args-symbol (gen-symbol)
-;				 initialization-result-symbol (gen-symbol)
-;				 previous-args-atom-symbol (gen-symbol)
-;				 inner-arg-symbol (gen-symbol)
-;				 converted-inner-arg-symbol (gen-symbol)
-;				 inner-confomed-args-symbol (gen-symbol)
-;				 previous-args-symbol (gen-symbol)]
-;		 (build-fn-body-internal arg-symbol outer-confomed-args-symbol reified-schema
-;												`(fn ~(:args initializer-metadata)
-;													 (let [~initialization-result-symbol (do ~@(:body initializer-metadata))
-;																 ~converted-arg-symbol (args-to-map ~arg-symbol)
-;																 ~previous-args-atom-symbol (atom [~converted-arg-symbol ~outer-confomed-args-symbol])]
-;														 (fn [& ~inner-arg-symbol]
-;															 (let [~converted-inner-arg-symbol (args-to-map ~inner-arg-symbol)
-;																		 ~previous-args-symbol (deref ~previous-args-atom-symbol)
-;																		 ~inner-confomed-args-symbol (conform-args ~converted-inner-arg-symbol
-;																																							 (build-default-overrides
-;																																								 ~converted-inner-arg-symbol
-;																																								 (first ~previous-args-symbol)
-;																																								 (second ~previous-args-symbol)) ~reified-schema)
-;																		 ~(first (:args handler-metadata)) (merge ~inner-confomed-args-symbol
-;																																							~initialization-result-symbol)]
-;																 (reset! ~previous-args-atom-symbol [~converted-inner-arg-symbol ~inner-confomed-args-symbol])
-;																 ~@(:body handler-metadata)))))))))
-;
-;(defn build-handler-fn-internal
-;	([handler-template]
-;	 (build-handler-fn-internal {} '(fn [] {}) handler-template))
-;	([schema handler-template]
-;	 (build-handler-fn-internal schema '(fn [] {}) handler-template))
-;	([schema initializer-template handler-template]
-;	 (let [args-symbol (gen-symbol)]
-;		 `(fn [& ~args-symbol]
-;				~(build-handler-fn-body-internal args-symbol schema initializer-template handler-template)))))
-;
-;(defmacro build-handler-fn-body [arg-symbol schema initializer-template handler-template]
-;	(build-handler-fn-body-internal arg-symbol schema initializer-template handler-template))
+(defn remove-nil [col] (remove nil? col))

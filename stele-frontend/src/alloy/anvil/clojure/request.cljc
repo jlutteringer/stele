@@ -6,7 +6,7 @@
 (defrecord RequestUri [path parameters hash extension])
 
 (def uri-schema
-	(schema/reify-schema ["RequestUri"
+	(schema/substantiate-schema ["RequestUri"
 											:fields [[:path]
 															 [:parameters]
 															 [:hash]

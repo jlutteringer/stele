@@ -5,6 +5,18 @@
 
 (def schema-layout-types #{:default :primary :enumerated :flag})
 
+(defn get-layout-details [field]
+	(let [layout-type (:layout-type field)]
+		(if (coll? layout-type)
+			{:type (first layout-type) :args (rest layout-type)}
+			{:type layout-type :args []})))
+
+(defn filter-fields [pred schema] (filter pred (:fields schema)))
+(defn get-field [key schema] (first (filter-fields #(= key (:key %)) schema)))
+(defn get-field-keys [schema] (util/to-set (map :key (:fields schema))))
+(defn filter-fields-by-layout [layout schema]
+	(filter-fields #(= layout (:type (get-layout-details %))) schema))
+
 (def schema-field-schema
 	{:name :schema-field
 	 :description "This is a description"
@@ -16,55 +28,51 @@
 						{:key :schema :description "The schema type of the field" :layout-type :default}]})
 
 (def schema-schema
-	{:name :schema
+	{:key ::schema
+	 :name "Schema"
 	 :description "This is a description"
-	 :fields [{:key :name :description "The name of the schema" :layout-type :primary}
+	 :fields [{:key :key :description "The key of the schema" :layout-type :primary}
+						{:key :name :description "The name of the schema" :layout-type :default :default-fn #(name (:key %))}
 						{:key :description :description "The description of the schema" :layout-type :default}
 						{:key :fields :description "The fields of the schema" :layout-type :default :schema [:collection schema-field-schema]}]})
-
-(defn get-layout-details [field]
-	(let [layout-type (:layout-type field)]
-		(if (coll? layout-type)
-			{:type (first layout-type) :args (rest layout-type)}
-			{:type layout-type :args []})))
-
-(defn filter-fields [pred schema] (filter pred (:fields schema)))
-(defn get-field [key schema] (first (filter-fields #(= key (:key %)) schema)))
-(defn filter-fields-by-layout [layout schema]
-	(filter-fields #(= layout (:type (get-layout-details %))) schema))
 
 (defn group-fields-by-layouts [schema]
 	(util/filter-groups schema-layout-types #(filter-fields-by-layout % schema)))
 
 ;TODO refactor
 (defn build-arg-pairs [args schema]
-	(let [layout-to-field-key-map
+	(let [field-keys (get-field-keys schema)
+				layout-to-field-key-map
 				(specter/multi-transform (specter/multi-path
 																	 [specter/MAP-VALS specter/ALL (specter/terminal #(-> [(:key %) (:args (get-layout-details %))]))]
-																	 [specter/MAP-VALS (specter/terminal pairs-to-map)])
+																	 [specter/MAP-VALS (specter/terminal util/pairs-to-map)])
 																 (group-fields-by-layouts schema))]
 		(reduce (fn [context val]
 							(let [previous-result (first context)]
 								(cond
 									(= ::key (first previous-result))
-									(conj (rest context) [(second previous-result) val])
+										(conj (rest context) [(second previous-result) val])
 									(contains? (:default layout-to-field-key-map) val)
-									(conj context [::key val])
+										(conj context [::key val])
 									(contains? (:flag layout-to-field-key-map) val)
-									(conj context [:flag val])
+										(conj context [val true])
 									:else (let [potential-enumerated-val
 															(util/find-first (fn [entry] (contains? (first (second entry)) val))
 																					(specter/select [:enumerated specter/ALL] layout-to-field-key-map))]
-													(if (some? potential-enumerated-val)
-														(conj context [(first potential-enumerated-val) val])
-														(conj context [(first (keys (:primary layout-to-field-key-map))) val])))))) util/concrete-seq args)))
+													(cond
+														(some? potential-enumerated-val)
+															(conj context [(first potential-enumerated-val) val])
+														(contains? field-keys val)
+															(conj context [::key val])
+														:else
+															(conj context [(first (keys (:primary layout-to-field-key-map))) val])))))) util/concrete-seq args)))
 
 (defn schema-args-to-map [args schema] (util/pairs-to-map (build-arg-pairs args schema)))
 
-(defn build-defaults-map-from-schema-fields [fields]
+(defn build-defaults-map-from-schema-fields [fields arg-map]
 	(util/pairs-to-map (map #(cond
 											 (some? (:default %)) [(:key %) (:default %)]
-											 (some? (:default-fn %)) [(:key %) ((:default-fn %) fields)]
+											 (some? (:default-fn %)) [(:key %) ((:default-fn %) arg-map)]
 											 :else nil) fields)))
 
 (defn normalize-schema-tag [schema-tag]
@@ -76,7 +84,8 @@
 (defn apply-defaults-shallow [arg-map schema]
 	(merge arg-map
 				 (build-defaults-map-from-schema-fields
-					 (filter-fields #(not (contains? arg-map (:key %))) schema))))
+					 (filter-fields #(not (contains? arg-map (:key %))) schema)
+					 arg-map)))
 
 (defn apply-defaults [arg-map schema]
 	(let [default-map-pairs (seq (apply-defaults-shallow arg-map schema))]
@@ -86,9 +95,9 @@
 														 (empty? sub-schema-tag)
 														 [key value]
 														 (= :collection (first sub-schema-tag))
-														 [key (util/to-vec (map #(reify % (second sub-schema-tag)) value))]
+														 [key (util/to-vec (map #(apply-defaults % (second sub-schema-tag)) value))]
 														 :else
-														 [key (reify value (second sub-schema-tag))])))
+														 [key (apply-defaults value (second sub-schema-tag))])))
 											 default-map-pairs))))
 
 (defn mapify-shallow [args schema]
@@ -103,9 +112,9 @@
 														 (empty? sub-schema-tag)
 														 [key value]
 														 (= :collection (first sub-schema-tag))
-														 [key (util/to-vec (map #(reify % (second sub-schema-tag)) value))]
+														 [key (util/to-vec (map #(mapify % (second sub-schema-tag)) value))]
 														 :else
-														 [key (reify value (second sub-schema-tag))])))
+														 [key (mapify value (second sub-schema-tag))])))
 											 reified-map-pairs))))
 
 (defn mapify-args [args schema]
@@ -114,63 +123,66 @@
 		(mapify (first args) schema)
 		(mapify args schema)))
 
-(defn reify [args schema] (apply-defaults (mapify args schema) schema))
+(defn substantiate-map [mapified-args schema] (apply-defaults mapified-args schema))
+(defn substantiate [args schema] (substantiate-map (mapify args schema) schema))
 
-(defn reify-schema [schema]
-	(reify schema schema-schema))
+(defn substantiate-schema [schema & inherits]
+	(let [substantiated-schema (substantiate schema schema-schema)]
+		(assoc substantiated-schema :fields (util/concat-vec (util/flatten-1 (map :fields inherits)) (:fields substantiated-schema)))))
 
-;(defn conform [args schema]
-;	(let
-;		[prevalidated-result (reify args schema)]
-;		(if (some? (:spec schema))
-;			(conform-or-throw (:spec schema) prevalidated-result)
-;			prevalidated-result)))
+(def default-hooks
+	{:default-override (util/static-fn {})
+	 })
 
-(defn make-fn
+(defn make-fn-scaffolding
 	([schema f]
-	 (make-fn schema f (util/static-fn {})))
+	 (make-fn-scaffolding schema f default-hooks))
 
-	([schema f default-overrider]
+	([schema f {:keys [default-override] :as hooks}]
 	 (fn [& args]
-		 (let [mapified-args (mapify args schema)
-					 reified-args (apply-defaults
-													(merge mapified-args (default-overrider mapified-args))
+		 (let [mapified-args (mapify-args args schema)
+					 reified-args (substantiate-map
+													(merge mapified-args (default-override mapified-args))
 													schema)]
 			 (timbre/debug
 				 "schema/make-fn with schema:" schema "Reified args" reified-args "from actual args" args)
 			 (f mapified-args reified-args)))))
 
-(defn make-handler-fn [schema initializer f]
-	(let []
-		(make-fn schema
-						 (fn [initial-args]
-							 (let [initializer-results (initializer initial-args)]
-								 (make-fn schema
-													(fn [actual-args]
-														(f (merge actual-args initializer-results)))))))))
+(defn schema-handler [schema f] (make-fn-scaffolding schema (fn [_ reified-args] (f reified-args))))
 
-(def dropdown-schema
-	(reify-schema ["Dropdown Element"
-								 :fields [[:label :description "This is the description"]
-													[:content :description "This is the content"]
-													[:open-state :description "Open state atom" :default-fn #(atom false)]]]))
+(defn build-default-overrides [current-args previous-args previous-reified-args]
+	(util/pairs-to-map (util/remove-nil (map
+															#(let [current-val (get current-args %)
+																		 prev-val (get previous-args %)]
+																(if (= current-val prev-val)
+																	[% (get previous-reified-args %)]
+																	nil))
+															(keys previous-reified-args)))))
 
-(def my-handler (make-handler-fn schema-schema (fn [_] {:a "a"}) (fn [arg] arg)))
-
-{:name :size
- :description "The number of columns spanned by this column element in the 12 column grid"
- :default nil
- :layout-type :normal}
-
-[:size :description "The number of columns spanned by this column element in the 12 column grid"]
-
-{:name :content
- :description "The content of this column element"
- :default []
- :layout-type :primary}
-
-[:content :description "The content of this column element" :primary]
-
-["Column Element"
- :fields [[:size :description "The number of columns spanned by this column element in the 12 column grid"]
-					[:content :description "The content of this column element" :primary]]]
+(def component-handler
+	(schema-handler (substantiate-schema [::component-handler
+																 :fields [[:key :schema]
+																					[:initializer :default (util/static-fn {})]
+																					[:template :layout-type :primary]
+																					[:static :layout-type :flag :default false]]])
+									(fn [{:keys [schema initializer template static]}]
+										(if static
+											(make-fn-scaffolding schema
+																					 (fn [_ initial-args]
+																						 (let [initializer-results (initializer initial-args)]
+																							 (make-fn-scaffolding schema
+																																		(fn [_ actual-args]
+																																			(template (merge actual-args initializer-results)))))))
+											(make-fn-scaffolding schema
+																					 (fn [mapified-args initial-args]
+																						 (let [initializer-results (initializer initial-args)
+																									 previous-args-atom (atom [mapified-args initial-args])]
+																							 (make-fn-scaffolding schema
+																																		(fn [actual-mapified-args actual-args]
+																																			(reset! previous-args-atom [actual-mapified-args actual-args])
+																																			(template (merge actual-args initializer-results)))
+																																		{:default-override
+																																		 (fn [mapified-args]
+																																			 (let [[previous-args previous-reified-args] (deref previous-args-atom)]
+																																				 (build-default-overrides mapified-args previous-args previous-reified-args)))
+																																		 }))))))))

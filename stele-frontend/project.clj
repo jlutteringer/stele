@@ -8,7 +8,7 @@
 								 [garden "1.3.2"]
 								 [binaryage/devtools "0.8.1"]
 								 [com.taoensso/timbre "4.7.0"]
-								 [com.rpl/specter "0.13.0"]]
+								 [com.rpl/specter "0.13.1-SNAPSHOT"]]
 	:source-paths ["src"]
 
 	:cljsbuild {:builds [{:source-paths ["src"]

@@ -2,13 +2,12 @@
 	(:require-macros [re-com.core :refer [handler-fn]])
 	(:require [cljs.spec :as spec :include-macros true]
 						[alloy.anvil.clojure.util :as util :include-macros true]
-						[alloy.stele.frontend.reagent-util :as rutil :include-macros true]
+						[alloy.anvil.clojure.schema :as schema]
 						[re-com.util :refer [deref-or-value position-for-id item-for-id]]
 						[re-com.box :refer [align-style flex-child-style]]
 						[re-com.validate :refer [vector-of-maps? css-style? html-attr? number-or-string?] :refer-macros [validate-args-macro]]
 						[clojure.string :as string]
-						[reagent.core :as reagent]
-						[alloy.stele.frontend.reagent-util :as rutil]))
+						[reagent.core :as reagent]))
 
 ;;  Inspiration: http://alxlit.name/bootstrap-chosen
 ;;  Alternative: http://silviomoreto.github.io/bootstrap-select
@@ -240,7 +239,7 @@
 ;				 [:div [:b]]]))))
 
 (def dropdown-top
-	(rutil/build-component
+	(schema/component-handler
 		(fn [{:keys [label open-state]}]
 			[:a.chosen-single.chosen-default
 			 {:href "javascript:"   ;; Required to make this anchor appear in the tab order
@@ -249,7 +248,7 @@
 			 [:span label] [:div [:b]]])))
 
 (def dropdown
-	(rutil/build-component
+	(schema/component-handler
 		dropdown-schema
 		(fn [{:keys [label content open-state]}]
 			[:div {:class (str "rc-dropdown chosen-container chosen-container-single noselect "
@@ -272,7 +271,7 @@
 																			(extract-event-map source-map))))
 
 (def list-item
-	(rutil/build-component
+	(schema/component-handler
 		{}
 		(fn [_]
 			{:mouse-over-state (reagent/atom false)})
@@ -286,7 +285,7 @@
 				 label]))))
 
 (def dropdown-list
-	(rutil/build-component
+	(schema/component-handler
 		(fn [{:keys [label choices open-state]}]
 			[dropdown
 			 :label label
@@ -307,7 +306,7 @@
 	(fn [] (reset! current-selection-atom choice)))
 
 (def select
-	(rutil/build-component
+	(schema/component-handler
 		{}
 		(fn [{:keys [placeholder]}]
 			{:current-selection (reagent/atom {:label placeholder})})

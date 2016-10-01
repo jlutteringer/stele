@@ -11,15 +11,16 @@
 	[b/container
 	 [:div.row
 		[b/col
-		 :size 9
-		 :content [[b/button :type :primary :label "Primary"]
-							 [:button {:class "btn btn-secondary" :type "button"} "Secondary"]
-							 [:button {:class "btn btn-success" :type "button"} "Success"]
-							 [:button {:class "btn btn-info" :type "button"} "Info"]
-							 [:button {:class "btn btn-warning" :type "button"} "Warning"]
-							 [:button {:class "btn btn-danger" :type "button"} "Danger"]
-							 [:button {:class "btn btn-link" :type "button"} "Link"]]]
-		[b/col :content "Sidebar"]]])
+		 [[b/button "Primary"]
+			[b/button [b/anchor "An Href" :uri "http://www.google.com"] :secondary]
+			[b/anchor "An Href" :uri "http://www.google.com"]
+			[:button {:class "btn btn-success" :type "button"} "Success"]
+			[:button {:class "btn btn-info" :type "button"} "Info"]
+			[:button {:class "btn btn-warning" :type "button"} "Warning"]
+			[:button {:class "btn btn-danger" :type "button"} "Danger"]
+			[:button {:class "btn btn-link" :type "button"} "Link"]]
+		 :size 9]
+		[b/col "Sidebar"]]])
 
 (defn render-app []
 	(reagent/render-component [home-page] (.getElementById js/document "app")))
