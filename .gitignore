@@ -4,3 +4,5 @@
 */target
 .nrepl-port
 stele.js
+stele-frontend/resources/public/js
+figwheel_server.log

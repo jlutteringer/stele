@@ -91,7 +91,7 @@
     <dependency>
       <groupId>com.rpl</groupId>
       <artifactId>specter</artifactId>
-      <version>0.13.0</version>
+      <version>0.13.1-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>org.clojure</groupId>

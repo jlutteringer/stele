@@ -1,5 +1,5 @@
 (ns alloy.bessemer.examples.example)
 
-(defn example-schema [::example
+(def example-schema [::example
 											:fields [[:content]
 															 []]])
