@@ -45,7 +45,7 @@
 				layout-to-field-key-map
 				(specter/multi-transform (specter/multi-path
 																	 [specter/MAP-VALS specter/ALL (specter/terminal #(-> [(:key %) (:args (get-layout-details %))]))]
-																	 [specter/MAP-VALS (specter/terminal util/pairs-to-map)])
+																	 [specter/MAP-VALS (specter/terminal util/map-convert-pairs)])
 																 (group-fields-by-layouts schema))]
 		(reduce (fn [context val]
 							(let [previous-result (first context)]
@@ -67,10 +67,10 @@
 														:else
 															(conj context [(first (keys (:primary layout-to-field-key-map))) val])))))) util/concrete-seq args)))
 
-(defn schema-args-to-map [args schema] (util/pairs-to-map (build-arg-pairs args schema)))
+(defn schema-args-to-map [args schema] (util/map-convert-pairs (build-arg-pairs args schema)))
 
 (defn build-defaults-map-from-schema-fields [fields arg-map]
-	(util/pairs-to-map (map #(cond
+	(util/map-convert-pairs (map #(cond
 											 (some? (:default %)) [(:key %) (:default %)]
 											 (some? (:default-fn %)) [(:key %) ((:default-fn %) arg-map)]
 											 :else nil) fields)))
@@ -89,7 +89,7 @@
 
 (defn apply-defaults [arg-map schema]
 	(let [default-map-pairs (seq (apply-defaults-shallow arg-map schema))]
-		(util/pairs-to-map (map (fn [[key value]]
+		(util/map-convert-pairs (map (fn [[key value]]
 												 (let [sub-schema-tag (normalize-schema-tag (:schema (get-field key schema)))]
 													 (cond
 														 (empty? sub-schema-tag)
@@ -98,7 +98,7 @@
 														 [key (util/to-vec (map #(apply-defaults % (second sub-schema-tag)) value))]
 														 :else
 														 [key (apply-defaults value (second sub-schema-tag))])))
-											 default-map-pairs))))
+																 default-map-pairs))))
 
 (defn mapify-shallow [args schema]
 	(if (map? args) args (schema-args-to-map args schema)))
@@ -106,7 +106,7 @@
 ;TODO don't implement using recursion
 (defn mapify [args schema]
 	(let [reified-map-pairs (seq (mapify-shallow args schema))]
-		(util/pairs-to-map (map (fn [[key value]]
+		(util/map-convert-pairs (map (fn [[key value]]
 												 (let [sub-schema-tag (normalize-schema-tag (:schema (get-field key schema)))]
 													 (cond
 														 (empty? sub-schema-tag)
@@ -115,7 +115,7 @@
 														 [key (util/to-vec (map #(mapify % (second sub-schema-tag)) value))]
 														 :else
 														 [key (mapify value (second sub-schema-tag))])))
-											 reified-map-pairs))))
+																 reified-map-pairs))))
 
 (defn mapify-args [args schema]
 	(if (and (= (count args) 1)
@@ -144,14 +144,14 @@
 					 reified-args (substantiate-map
 													(merge mapified-args (default-override mapified-args))
 													schema)]
-			 (timbre/debug
+			 (timbre/trace
 				 "schema/make-fn with schema:" schema "Reified args" reified-args "from actual args" args)
 			 (f mapified-args reified-args)))))
 
 (defn schema-handler [schema f] (make-fn-scaffolding schema (fn [_ reified-args] (f reified-args))))
 
 (defn build-default-overrides [current-args previous-args previous-reified-args]
-	(util/pairs-to-map (util/remove-nil (map
+	(util/map-convert-pairs (util/remove-nil (map
 															#(let [current-val (get current-args %)
 																		 prev-val (get previous-args %)]
 																(if (= current-val prev-val)

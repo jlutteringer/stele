@@ -25,7 +25,7 @@
 (def anchor
 	(butil/component
 		(fn [{:keys [label uri] :as args}]
-			[:a (butil/attributes args {:href uri}) label])
+			[:a (butil/make-attributes {:href uri} args) label])
 		:schema anchor-schema
 		:static))
 
@@ -33,14 +33,15 @@
 
 (def button-schema (butil/web-element [::button
 																			 :fields [[:label :primary]
-																								[:type :default :primary :layout-type [:enumerated button-types]]]]))
+																								[:type :default :primary :layout-type [:enumerated button-types]]
+																								[:outline :default false :layout-type :flag]
+																								[:size :defauly]]]))
 
 (def button
 	(butil/component
 		(fn [{:keys [label type] :as args}]
-			(println label)
 			(if (string? label)
-				[:button (butil/attributes args {:class ["btn" (str "btn-" (name type))]}) label]
-				[(first label) (butil/merge-elements args (schema/substantiate (rest label) anchor-schema))]))
+				[:button (butil/make-attributes {:class ["btn" (str "btn-" (name type))]} args) label]
+				(butil/make-merged-element label anchor-schema args {:class ["btn" (str "btn-" (name type))]})))
 		:schema button-schema
 		:static))

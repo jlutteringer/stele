@@ -14,7 +14,7 @@
     </license>
   </licenses>
   <build>
-    <sourceDirectory>src/clj</sourceDirectory>
+    <sourceDirectory>src\clj</sourceDirectory>
     <testSourceDirectory>test</testSourceDirectory>
     <resources>
       <resource>
@@ -27,7 +27,7 @@
       </testResource>
     </testResources>
     <directory>target</directory>
-    <outputDirectory>target/classes</outputDirectory>
+    <outputDirectory>target\classes</outputDirectory>
     <plugins>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
@@ -42,8 +42,8 @@
             </goals>
             <configuration>
               <sources>
-                <source>src/cljs</source>
-                <source>src/cljc</source>
+                <source>src\cljs</source>
+                <source>src\cljc</source>
               </sources>
             </configuration>
           </execution>

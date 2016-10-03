@@ -14,17 +14,38 @@
 															 :fields [[:class :default []]
 																				[:style :default {}]]]))
 
-(defn web-element [schema] (schema/substantiate-schema schema web-element-schema))
+(def web-element-merge-strategy
+	{:class (fn [first second]
+						(util/concat-vec (:class first) (:class second)))})
 
-(defn attributes [web-element additional-attributes]
-	(util/concat-map
-		web-element
-		additional-attributes
-		{:class (string/join " " (util/concat-vec (:class web-element) (:class additional-attributes)))}))
+(defn web-element [schema] (schema/substantiate-schema schema web-element-schema))
 
 (defn component [& args]
 	(apply schema/component-handler args))
 
-(defn web-element-field-map [web-element] )
+(defn merge-elements [& args]
+	(util/map-concat-strategy web-element-merge-strategy args))
 
-(defn merge-elements [first second])
+(defn filter-web-attributes [web-element]
+	(util/map-filter-keys (schema/get-field-keys web-element-schema) web-element))
+
+(defn merge-attributes [target-attributes & web-attributes]
+	(merge-elements
+		(filter-web-attributes (merge-elements web-attributes))
+		target-attributes))
+
+(def web-element-substantiation-strategy
+	{:class (fn [classes] (string/join " " classes))})
+
+(defn substantiate-attributes [attributes]
+	(util/map-transform-strategy web-element-substantiation-strategy attributes))
+
+(defn make-attributes [target-attributes & web-attributes]
+	(substantiate-attributes (merge-attributes target-attributes web-attributes)))
+
+(defn make-merged-element [raw-element schema merge-element additions]
+	[(first raw-element)
+	 (merge-elements
+		 (schema/substantiate (rest raw-element) schema)
+		 (filter-web-attributes merge-element)
+		 additions)])

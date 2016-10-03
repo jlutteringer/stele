@@ -1,6 +1,7 @@
 (ns alloy.anvil.clojure.util
 	#?(:cljs (:require-macros alloy.anvil.clojure.util))
-	(:require [taoensso.timbre :as timbre #?@(:cljs (:include-macros true))]
+	(:require [clojure.walk :as walk]
+						[taoensso.timbre :as timbre #?@(:cljs (:include-macros true))]
 						[com.rpl.specter :as specter #?@(:cljs (:include-macros true))]
 		#?(:clj [clojure.spec :as spec]
 			 :cljs [cljs.spec :as spec])))
@@ -18,12 +19,8 @@
 		arg
 		[arg]))
 
-(defn pour-map
-	[arg]
-	(if (map? arg) arg {(first arg) (second arg)}))
-
 (defn debug [arg]
-	(println arg)
+	(println "DEBUG" arg)
 	arg)
 
 (defn to-vec [col] (into [] col))
@@ -35,8 +32,50 @@
 (defn concat-vec [& args]
 	(into [] (apply concat-seq args)))
 
-(defn concat-map [& args]
-	(apply merge (map pour-map args)))
+(defn flatten-with-pred [pred arg]
+	(filter (complement pred) (tree-seq pred seq arg)))
+
+(defn map-merge-with-key
+	"Returns a map that consists of the rest of the maps conj-ed onto
+	the first.  If a key occurs in more than one map, the mapping(s)
+	from the latter (left-to-right) will be combined with the mapping in
+	the result by calling (f val-in-result val-in-latter)."
+	[f & maps]
+	(when (some identity maps)
+		(let [merge-entry (fn [m e]
+												(let [k (first e) v (second e)]
+													(if (contains? m k)
+														(assoc m k (f m (get m k) v))
+														(assoc m k v))))
+					merge2 (fn [m1 m2]
+									 (reduce merge-entry (or m1 {}) (seq m2)))]
+			(reduce merge2 maps))))
+
+(defn map-convert-pairs [pairs] (into {} pairs))
+
+(defn map-concat-with [f & args]
+	(apply (partial map-merge-with-key f) (flatten-with-pred sequential? args)))
+
+(defn map-concat-strategy [strategy & args]
+	(map-concat-with (fn [key first second]
+										 (if (contains? strategy key)
+											 ((get strategy key) first second)
+											 second)) args))
+
+(defn map-concat [& args] (map-concat-with (fn [_ _ val] val) args))
+
+(defn map-filter [pred map] (map-convert-pairs (filter pred map)))
+
+(defn map-filter-keys [keys map]
+	(map-filter (fn [[key _]] (contains? keys key)) map))
+
+(defn map-transform [f m] (map-convert-pairs (map f m)))
+
+(defn map-transform-strategy [strategy map]
+	(map-transform (fn [[key val]]
+									 (if (contains? strategy key)
+										 [key ((get strategy key) val)]
+										 [key val])) map))
 
 (def not-zero? (complement zero?))
 (def not-nil? (complement nil?))
@@ -133,8 +172,6 @@
 (defn rand-between [left-bound right-bound]
 	(+ (rand (- right-bound left-bound)) left-bound))
 
-(defn pairs-to-map [pairs] (into {} pairs))
-
 (defn seq-to-map [list]
 	(into {} (map vec (partition 2 list))))
 
@@ -156,7 +193,7 @@
 (defn map-to-vec [map] (into [] (map-to-seq map)))
 
 (defn filter-groups [groups filter-fn]
-	(pairs-to-map (map #(-> [% (filter-fn %)]) groups)))
+	(map-convert-pairs (map #(-> [% (filter-fn %)]) groups)))
 
 (defn third
 	[coll]
