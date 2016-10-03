@@ -20,7 +20,7 @@
 			 [:button {:class "btn btn-warning" :type "button"} "Warning"]
 			 [:button {:class "btn btn-danger" :type "button"} "Danger"]
 			 [:button {:class "btn btn-link" :type "button"} "Link"]
-			 [:button {:class "btn" :style {:background-color "pink" :color "white"} :type "button"} "Josie"]]]
+			 [:button {:class "btn" :style {:background-color "pink" :color "white"} :type "button"} "Jdub"]]]
 		 :size 9]
 		[b/col "Sidebar"]]])
 

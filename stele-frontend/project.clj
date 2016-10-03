@@ -1,5 +1,5 @@
 (defproject alloy.stele/stele-frontend "0.0.1-SNAPSHOT"
-	:plugins [[lein-modules "0.3.11"] [lein-cljsbuild "1.1.1"] [lein-npm "0.6.2"] [lein-figwheel "0.5.8"]]
+	:plugins [[lein-modules "0.3.11"] [lein-cljsbuild "1.1.1"] [lein-npm "0.6.2"]]
 	:description "FIXME: write description"
 	:dependencies [[alloy.stele/stele-core :version]
 								 [re-frame "0.8.0-alpha11"]
@@ -8,8 +8,9 @@
 								 [garden "1.3.2"]
 								 [binaryage/devtools "0.8.1"]
 								 [com.taoensso/timbre "4.7.0"]
-								 [com.rpl/specter "0.13.1-SNAPSHOT"]]
-	:source-paths ["src"]
+								 [com.rpl/specter "0.13.1-SNAPSHOT"]
+								 [figwheel-sidecar "0.5.8"]]
+	:source-paths ["src" "resources/scripts"]
 
 	:cljsbuild {:builds [{:id "dev"
 												:figwheel true
