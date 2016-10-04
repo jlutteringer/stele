@@ -189,6 +189,8 @@
 												 (conj acc elt))      ; if elt is not a sequence, add elt itself
 											 others)))))
 
+(defn flatten-2 [seq] (flatten-1 (flatten-1 seq)))
+
 (defn map-to-seq [map] (flatten-1 (seq map)))
 (defn map-to-vec [map] (into [] (map-to-seq map)))
 

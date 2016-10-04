@@ -182,21 +182,21 @@ NIL : 'nil';
 
 BOOLEAN : 'true' | 'false' ;
 
-SYMBOL
-    : '.'
-    | '/'
-    | NAME
-    ;
-
 NS_SYMBOL
     : NAME '/' SYMBOL
     ;
 
 PARAM_NAME: '%' ((#"[1-9]" #"[0-9]*") | '&')? ;
 
-NAME: SYMBOL_HEAD SYMBOL_REST* (':' SYMBOL_REST+)* ;
+KWNAME: #"([^^`'\"~@:/\(\)\[\]\{\} \n\r\t\,]+\/)*[^^`'\"~@:/\(\)\[\]\{\} \n\r\t\,]+";
 
-KWNAME: ((SYMBOL_REST | '%' | '#')+ '/')* (SYMBOL_REST | '%' | '#')+;
+SYMBOL
+    : '.'
+    | '/'
+    | NAME
+    ;
+
+NAME: SYMBOL_HEAD SYMBOL_REST* (':' SYMBOL_REST+)* ;
 
 SYMBOL_HEAD: #"[^0-9^`'\"#~@:/%\(\)\[\]\{\} \n\r\t\,]";
 
