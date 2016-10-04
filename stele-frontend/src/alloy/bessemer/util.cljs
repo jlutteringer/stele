@@ -29,7 +29,7 @@
 (defn filter-web-attributes [web-element]
 	(util/map-filter-keys (schema/get-field-keys web-element-schema) web-element))
 
-(defn merge-attributes [target-attributes & web-attributes]
+(defn merge-attributes [web-attributes & target-attributes]
 	(merge-elements
 		(filter-web-attributes (merge-elements web-attributes))
 		target-attributes))
@@ -40,8 +40,8 @@
 (defn substantiate-attributes [attributes]
 	(util/map-transform-strategy web-element-substantiation-strategy attributes))
 
-(defn make-attributes [target-attributes & web-attributes]
-	(substantiate-attributes (merge-attributes target-attributes web-attributes)))
+(defn make-attributes [web-attributes & target-attributes]
+	(substantiate-attributes (merge-attributes web-attributes target-attributes)))
 
 (defn make-merged-element [raw-element schema merge-element additions]
 	[(first raw-element)

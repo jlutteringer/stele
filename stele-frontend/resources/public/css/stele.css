@@ -24,3 +24,22 @@
 .chosen-container-single .chosen-drop {
 	width: 100%;
 }
+
+.bessemer-example .example {
+	position: relative;
+	padding: 1rem;
+	border: .2rem solid #f7f7f9;
+}
+
+.bessemer-example .documentation {
+	padding: 1.5rem;
+	background-color: #f7f7f9;
+}
+
+.bessemer-example .documentation pre {
+	margin: 0;
+}
+.bessemer-example .documentation code {
+	padding: 0;
+	background: none;
+}

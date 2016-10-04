@@ -25,23 +25,44 @@
 (def anchor
 	(butil/component
 		(fn [{:keys [label uri] :as args}]
-			[:a (butil/make-attributes {:href uri} args) label])
+			[:a (butil/make-attributes label {:href uri} args)])
 		:schema anchor-schema
 		:static))
 
 (def button-types #{:primary :secondary :success :info :warning :danger :link})
+(def button-sizes #{:default :large :small :block})
+
+(def example-schema (butil/web-element [::example
+																				:fields [[:content]]]))
+(def example
+	(butil/component
+		(fn [{:keys [content]}]
+			[:div.bessemer-example
+			 (util/concat-vec  [:div.example] content)])
+		:schema example-schema
+		:static))
 
 (def button-schema (butil/web-element [::button
 																			 :fields [[:label :primary]
 																								[:type :default :primary :layout-type [:enumerated button-types]]
 																								[:outline :default false :layout-type :flag]
-																								[:size :defauly]]]))
-
+																								[:size :default :default :layout-type [:enumerated button-sizes]]
+																								[:disabled :default false :layout-type :flag]]]))
 (def button
 	(butil/component
-		(fn [{:keys [label type] :as args}]
+		(fn [{:keys [label type outline size disabled] :as args}]
 			(if (string? label)
-				[:button (butil/make-attributes {:class ["btn" (str "btn-" (name type))]} args) label]
+				[:button (butil/make-attributes
+									 args
+									 {:class ["btn"
+														(str "btn-" (when outline "outline-") (name type))
+														(cond
+															(= :default size) ""
+															(= :large size) "btn-lg"
+															(= :small size) "btm-sm"
+															(= :block size) "btn-block")]}
+									 (when disabled
+										 {:disabled "disabled"})) label]
 				(butil/make-merged-element label anchor-schema args {:class ["btn" (str "btn-" (name type))]})))
 		:schema button-schema
 		:static))
