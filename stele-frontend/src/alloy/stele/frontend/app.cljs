@@ -7,14 +7,16 @@
 	(:require-macros [mount.core :refer [defstate]]
 									 [reagent.ratom :refer [reaction]]))
 
+(defonce state (reagent/atom "State"))
+
 (defn home-page []
 	[b/container
 	 [:div.row
 		[b/col
 		 [[b/example
 			 :content [[:div.btn-toolbar
-									[b/button "Primary"]
-									[b/button "Secondary" :secondary]
+									[b/button @state]
+									[b/button "Changed Again" :secondary]
 									[b/button "Success" :success]
 									[b/button "Info" :info]
 									[b/button "Warning" :warning]

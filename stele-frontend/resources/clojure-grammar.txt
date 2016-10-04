@@ -1,0 +1,213 @@
+file: form *;
+
+form: comment | whitespace | literal
+    | list
+    | vector
+    | map
+    | set
+    | reader_macro
+    ;
+
+forms: form* ;
+
+list: '(' forms ')' ;
+
+vector: '[' forms ']' ;
+
+map: '{' forms '}' ;
+
+set: '#{' forms '}' ;
+
+reader_macro
+    : lambda
+    | meta_data
+    | var_quote
+    | host_expr
+    | tag
+    | discard
+    | dispatch
+    | deref
+    | quote
+    | backtick
+    | unquote
+    | unquote_splicing
+    | gensym
+    ;
+
+quote
+    : '\'' form
+    ;
+
+backtick
+    : '`' form
+    ;
+
+unquote
+    : '~' form
+    ;
+
+unquote_splicing
+    : '~@' form
+    ;
+
+tag
+    : '^' form
+    ;
+
+deref
+    : '@' form
+    ;
+
+gensym
+    : SYMBOL '#'
+    ;
+
+lambda
+    : '#' list
+    ;
+
+meta_data
+    : '#^' (map form | form)
+    ;
+
+var_quote
+    : '#\'' symbol
+    ;
+
+host_expr
+    : '#+' form form
+    ;
+
+discard
+    : '#_' form
+    ;
+
+dispatch
+    : '#' symbol form
+    ;
+
+literal
+    : string
+    | regex
+    | number
+    | character
+    | nil
+    | boolean
+    | keyword
+    | symbol
+    | param_name
+    ;
+
+string: STRING;
+
+regex
+    : '#' STRING
+    ;
+
+number: NUMBER;
+
+NUMBER
+    : FLOAT
+    | HEX
+    | BIN
+    | BIGN
+    | LONG
+    ;
+
+character
+    : named_char
+    | u_hex_quad
+    | any_char
+    ;
+named_char: CHAR_NAMED ;
+any_char: CHAR_ANY ;
+u_hex_quad: CHAR_U ;
+
+nil: NIL;
+boolean: BOOLEAN;
+
+keyword: KEYWORD;
+KEYWORD: (':' | '::') KWNAME;
+
+symbol: ns_symbol | simple_sym;
+simple_sym: SYMBOL;
+ns_symbol: NS_SYMBOL;
+
+param_name: PARAM_NAME;
+
+STRING : '"' (#"[^\"\\]" | ESCAPE | CHAR_NAMED | CHAR_ANY | CHAR_U)* '"' ;
+
+ESCAPE:
+  '\\' ('b'|'t'|'n'|'f'|'r'|'"'|'\\');
+
+FLOAT
+    : '-'? #"[0-9]+" FLOAT_TAIL
+    | '-'? 'Infinity'
+    | '-'? 'NaN'
+    ;
+
+FLOAT_TAIL
+    : FLOAT_DECIMAL FLOAT_EXP
+    | FLOAT_DECIMAL
+    | FLOAT_EXP
+    ;
+
+FLOAT_DECIMAL
+    : '.' #"[0-9]+"
+    ;
+
+FLOAT_EXP
+    : ('e' | 'E') '-'? #"[0-9]+"
+    ;
+
+HEX: '0' ('x' | 'X') HEXD+;
+HEXD: #"[0-9a-fA-F]";
+BIN: '0' ('b' | 'B') ('1' | '0')+ ;
+LONG: '-'? #"[0-9]+[lL]?";
+BIGN: '-'? #"[0-9]+[nN]";
+
+CHAR_U
+    : '\\' 'u' #"[0-9D-Fd-f]" HEXD HEXD HEXD ;
+CHAR_NAMED
+    : '\\' ( 'newline'
+           | 'return'
+           | 'space'
+           | 'tab'
+           | 'formfeed'
+           | 'backspace' ) ;
+CHAR_ANY
+    : '\\' #"." ;
+
+NIL : 'nil';
+
+BOOLEAN : 'true' | 'false' ;
+
+SYMBOL
+    : '.'
+    | '/'
+    | NAME
+    ;
+
+NS_SYMBOL
+    : NAME '/' SYMBOL
+    ;
+
+PARAM_NAME: '%' ((#"[1-9]" #"[0-9]*") | '&')? ;
+
+NAME: SYMBOL_HEAD SYMBOL_REST* (':' SYMBOL_REST+)* ;
+
+KWNAME: ((SYMBOL_REST | '%' | '#')+ '/')* (SYMBOL_REST | '%' | '#')+;
+
+SYMBOL_HEAD: #"[^0-9^`'\"#~@:/%\(\)\[\]\{\} \n\r\t\,]";
+
+SYMBOL_REST
+    : SYMBOL_HEAD
+    | #"[0-9]"
+    | '.'
+    ;
+
+whitespace: WS;
+WS: #"[ \n\r\t,]+";
+
+comment: COMMENT_CHAR;
+COMMENT_CHAR: ';' #"[^\n\r]+" '\n';
