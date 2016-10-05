@@ -9,8 +9,7 @@
 								 [binaryage/devtools "0.8.1"]
 								 [com.taoensso/timbre "4.7.0"]
 								 [com.rpl/specter "0.13.1-SNAPSHOT"]
-								 [figwheel-sidecar "0.5.8"]
-								 [com.lucasbradstreet/instaparse-cljs "1.4.1.2"]]
+								 [figwheel-sidecar "0.5.8"]]
 	:source-paths ["src" "resources/scripts"]
 
 	:cljsbuild {:builds [{:id "dev"
