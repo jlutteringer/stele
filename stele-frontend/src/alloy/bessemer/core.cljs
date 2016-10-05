@@ -2,6 +2,8 @@
 	(:require
 		[alloy.anvil.clojure.util :as util :include-macros true]
 		[alloy.anvil.clojure.schema :as schema]
+		[alloy.anvil.clojure.parse :as parse]
+		[clojure.string :as string]
 		[alloy.bessemer.util :as butil]))
 
 (defn container [& args]
@@ -33,12 +35,17 @@
 (def button-sizes #{:default :large :small :block})
 
 (def example-schema (butil/web-element [::example
-																				:fields [[:content]]]))
+																				:fields [[:content]
+																								 [:code]]]))
 (def example
 	(butil/component
-		(fn [{:keys [content]}]
+		(fn [{:keys [content code]}]
 			[:div.bessemer-example
-			 (util/concat-vec  [:div.example] content)])
+			 (util/concat-vec  [:div.example] content)
+			 (when (some? code)
+				 [:div.documentation
+					[:pre
+					 (util/concat-vec :code.clojure (parse/clojure-to-hiccup code))]])])
 		:schema example-schema
 		:static))
 

@@ -1,9 +1,12 @@
 (ns alloy.stele.frontend.app
 	(:require [alloy.stele.frontend.components :as components]
 						[alloy.bessemer.core :as b]
+						[alloy.anvil.clojure.parse :as parse]
+						[alloy.anvil.clojure.util :as util]
 						[reagent.core :as reagent]
 						[re-frame.core :as re-frame]
-						[re-com.core :as re-com])
+						[re-com.core :as re-com]
+						[clojure.string :as string])
 	(:require-macros [mount.core :refer [defstate]]
 									 [reagent.ratom :refer [reaction]]))
 
@@ -21,7 +24,10 @@
 									[b/button "Info" :info]
 									[b/button "Warning" :warning]
 									[b/button "Danger" :danger]
-									[b/button "Link" :link]]]]
+									[b/button "Link" :link]]]
+			 :code (string/join [";These are buttons and we don't care who knows:\n"
+													 "[:button {:class \"btn btn-success\" :type \"button\"} \"Success\"]\n"
+													 "[:button {:class \"btn btn-success\" :type \"button\"} \"Success\"]"])]
 			[b/example
 			 :content [[:div.btn-toolbar
 									[b/button "Primary" :outline]
@@ -45,25 +51,6 @@
 			 :content [[:div.btn-toolbar
 									[b/button "Primary" :large :disabled]
 									[b/button "Secondary" :secondary :large :disabled]]]]]
-		 ;[[:div.bessemer-example
-			; [:div.example
-			;	[:div.btn-toolbar
-			;	 [:button {:class "btn btn-success" :type "button"} "Success"]
-			;	 [:button {:class "btn btn-info" :type "button"} "Info"]
-			;	 [:button {:class "btn btn-warning" :type "button"} "Warning"]
-			;	 [:button {:class "btn btn-danger" :type "button"} "Danger"]
-			;	 [:button {:class "btn btn-link" :type "button"} "Link"]
-			;	 [:button {:class "btn" :style {:background-color "pink" :color "white"} :type "button"} "Test"]]]
-			; [:div.documentation
-			;	[:pre
-			;	 [:code.clojure
-			;		"[:button {:class \"btn btn-success\" :type \"button\"} \"Success\"]\n"
-			;		"[:button {:class \"btn btn-success\" :type \"button\"} \"Success\"]\n"
-			;		"[:button {:class \"btn btn-success\" :type \"button\"} \"Success\"]\n"
-			;		"[:button {:class \"btn btn-success\" :type \"button\"} \"Success\"]\n"
-			;		"[:button {:class \"btn btn-success\" :type \"button\"} \"Success\"]\n"
-			;		"[:button {:class \"btn btn-success\" :type \"button\"} \"Success\"]\n"
-			;		"[:button {:class \"btn btn-success\" :type \"button\"} \"Success\"]"]]]]]
 		 :size 9]
 		[b/col "Sidebar"]]])
 
