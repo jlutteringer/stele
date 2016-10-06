@@ -39,6 +39,49 @@
 (defn group-fields-by-layouts [schema]
 	(util/filter-groups schema-layout-types #(filter-fields-by-layout % schema)))
 
+; TODO 'tagging' is a wip for more intelligent schema resolution, replacing build-arg-pairs
+; this should reduce the need to disambiguate in some cases, and we should be able to provide
+; better error handling when the resolution mechanism fails
+(defn tag-args [args schema]
+	(let [field-keys (get-field-keys schema)
+				layout-to-field-key-map
+				(specter/multi-transform (specter/multi-path
+																	 [specter/MAP-VALS specter/ALL (specter/terminal #(-> [(:key %) (:args (get-layout-details %))]))]
+																	 [specter/MAP-VALS (specter/terminal util/map-convert-pairs)])
+																 (group-fields-by-layouts schema))]
+		(util/map-contextual
+			(fn [arg context]
+				(let [potential-enumerated-val
+							(util/find-first (fn [entry] (contains? (first (second entry)) arg))
+															 (specter/select [:enumerated specter/ALL] layout-to-field-key-map))]
+					[arg (util/set-build
+								  (when (or (contains? (second (first context)) [:strong-key])
+														(contains? (second (first context)) [:weak-key])) [:value])
+								  (when (util/not-empty? (:primary layout-to-field-key-map)) [:primary])
+									(cond
+										(contains? (:default layout-to-field-key-map) arg) [:strong-key]
+										(contains? field-keys arg) [:weak-key])
+									(when (contains? (:flag layout-to-field-key-map) arg) [:flag])
+									(when (some? potential-enumerated-val) [:enumerated (first potential-enumerated-val)]))]))
+			args)))
+
+(defn contains-tags [tags & target-tags]
+	())
+
+(defn choose-field-type [tagged-fields field type]
+	())
+
+(defn sp-next [arg])
+(defn sp-skip [arg])
+
+;TODO utility for advanced sequence processing
+(defn seq-process [[field tags] result context]
+	(if (and (contains-tags tags :strong-key :weak-key)
+					 (not (contains-tags (second (sp-next context)) :enumerated :flag)))
+		[(conj result [field (first (sp-next context))]) (choose-field-type context field :key)]
+		[result (sp-skip context)]))
+;end tagging
+
 ;TODO refactor
 (defn build-arg-pairs [args schema]
 	(let [field-keys (get-field-keys schema)
@@ -159,6 +202,9 @@
 																	nil))
 															(keys previous-reified-args)))))
 
+(defn make-fn [schema f]
+	(make-fn-scaffolding schema (fn [_ reified-args] (f reified-args))))
+
 (def component-handler
 	(schema-handler (substantiate-schema [::component-handler
 																 :fields [[:key :schema]
@@ -186,3 +232,11 @@
 																																			 (let [[previous-args previous-reified-args] (deref previous-args-atom)]
 																																				 (build-default-overrides mapified-args previous-args previous-reified-args)))
 																																		 }))))))))
+
+(def example-component-schema
+	(substantiate-schema [::example-component
+												:fields [[:key :primary]
+																 [:title]
+																 [:example]
+																 [:source]
+																 [:additional-content]]]))

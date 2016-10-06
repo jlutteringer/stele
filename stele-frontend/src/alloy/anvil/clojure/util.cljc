@@ -12,6 +12,8 @@
 ; =====================================================================
 ; =====================================================================
 
+(def concrete-seq (filter false []))
+
 (defn pour
 	"Wraps argument in a vector if it is not already a collection."
 	[arg]
@@ -32,8 +34,13 @@
 (defn concat-vec [& args]
 	(into [] (apply concat-seq args)))
 
-(defn flatten-with-pred [pred arg]
+(defn coll-flatten-top-with-pred [pred arg]
 	(filter (complement pred) (tree-seq pred seq arg)))
+
+(defn coll-flatten-top-seqs [coll] (coll-flatten-top-with-pred sequential? coll))
+
+(defn coll-vectorize [pred coll]
+	(map (fn [x] (if (pred x) [x] x)) coll))
 
 (defn map-merge-with-key
 	"Returns a map that consists of the rest of the maps conj-ed onto
@@ -54,7 +61,7 @@
 (defn map-convert-pairs [pairs] (into {} pairs))
 
 (defn map-concat-with [f & args]
-	(apply (partial map-merge-with-key f) (flatten-with-pred sequential? args)))
+	(apply (partial map-merge-with-key f) (coll-flatten-top-with-pred sequential? args)))
 
 (defn map-concat-strategy [strategy & args]
 	(map-concat-with (fn [key first second]
@@ -77,12 +84,42 @@
 										 [key ((get strategy key) val)]
 										 [key val])) map))
 
+(defn map-contextual [f coll]
+	(reverse (reduce
+						 (fn [context val]
+							 (conj context (f val context)))
+						 concrete-seq
+						 coll)))
+
+(defn flatten-1
+	"Flattens only the first level of a given sequence, e.g. [[1 2][3]] becomes
+	 [1 2 3], but [[1 [2]] [3]] becomes [1 [2] 3]."
+	[seq]
+	(if (or (not (seqable? seq)) (nil? seq))
+		seq ; if seq is nil or not a sequence, don't do anything
+		(loop [acc [] [elt & others] seq]
+			(if (nil? elt) acc
+										 (recur
+											 (if (seqable? elt)
+												 (apply conj acc elt) ; if elt is a sequence, add each element of elt
+												 (conj acc elt))      ; if elt is not a sequence, add elt itself
+											 others)))))
+
+(defn flatten-2 [seq] (flatten-1 (flatten-1 seq)))
+
+(defn set-build [& args]
+	(to-set (filter some? args)))
+
+(defn map-to-seq [map] (flatten-1 (seq map)))
+(defn map-to-vec [map] (into [] (map-to-seq map)))
+
+(defn demapify [x]
+	(walk/postwalk (fn [form] (if (map? form) (concat-vec ::map (map-to-vec form)) form)) x))
+
 (def not-zero? (complement zero?))
 (def not-nil? (complement nil?))
 (def not-neg? (complement neg?))
 (defn not-empty? [col] (boolean (seq col)))
-
-(def concrete-seq (filter false []))
 
 (defn group-by-index [ccol]
 	(loop [remainder ccol
@@ -174,25 +211,6 @@
 
 (defn seq-to-map [list]
 	(into {} (map vec (partition 2 list))))
-
-(defn flatten-1
-	"Flattens only the first level of a given sequence, e.g. [[1 2][3]] becomes
-	 [1 2 3], but [[1 [2]] [3]] becomes [1 [2] 3]."
-	[seq]
-	(if (or (not (seqable? seq)) (nil? seq))
-		seq ; if seq is nil or not a sequence, don't do anything
-		(loop [acc [] [elt & others] seq]
-			(if (nil? elt) acc
-										 (recur
-											 (if (seqable? elt)
-												 (apply conj acc elt) ; if elt is a sequence, add each element of elt
-												 (conj acc elt))      ; if elt is not a sequence, add elt itself
-											 others)))))
-
-(defn flatten-2 [seq] (flatten-1 (flatten-1 seq)))
-
-(defn map-to-seq [map] (flatten-1 (seq map)))
-(defn map-to-vec [map] (into [] (map-to-seq map)))
 
 (defn filter-groups [groups filter-fn]
 	(map-convert-pairs (map #(-> [% (filter-fn %)]) groups)))
