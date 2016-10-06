@@ -205,12 +205,15 @@
 (defn make-fn [schema f]
 	(make-fn-scaffolding schema (fn [_ reified-args] (f reified-args))))
 
+(def component-handler-schema
+	(substantiate-schema [::component-handler
+												:fields [[:key :schema]
+																 [:initializer :default (util/static-fn {})]
+																 [:template :layout-type :primary]
+																 [:static :layout-type :flag :default false]]]))
+
 (def component-handler
-	(schema-handler (substantiate-schema [::component-handler
-																 :fields [[:key :schema]
-																					[:initializer :default (util/static-fn {})]
-																					[:template :layout-type :primary]
-																					[:static :layout-type :flag :default false]]])
+	(schema-handler component-handler-schema
 									(fn [{:keys [schema initializer template static]}]
 										(if static
 											(make-fn-scaffolding schema

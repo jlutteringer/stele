@@ -21,7 +21,10 @@
 (defn web-element [schema] (schema/substantiate-schema schema web-element-schema))
 
 (defn component [& args]
-	(apply schema/component-handler args))
+	(let [{:keys [template] :as substantiated-args} (schema/substantiate args schema/component-handler-schema)]
+		(schema/component-handler
+			(assoc substantiated-args :template
+																(fn [& args] (util/hiccupify (apply template args)))))))
 
 (defn merge-elements [& args]
 	(util/map-concat-strategy web-element-merge-strategy args))

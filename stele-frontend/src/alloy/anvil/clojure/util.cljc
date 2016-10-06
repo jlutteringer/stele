@@ -14,10 +14,12 @@
 
 (def concrete-seq (filter false []))
 
+(defn filter-null [coll] (filter some? coll))
+
 (defn pour
 	"Wraps argument in a vector if it is not already a collection."
 	[arg]
-	(if (coll? arg)
+	(if (sequential? arg)
 		arg
 		[arg]))
 
@@ -29,7 +31,7 @@
 (defn to-set [col] (into #{} col))
 
 (defn concat-seq [& args]
-	(apply concat (map pour args)))
+	(apply concat (map pour (filter-null args))))
 
 (defn concat-vec [& args]
 	(into [] (apply concat-seq args)))
@@ -90,6 +92,8 @@
 							 (conj context (f val context)))
 						 concrete-seq
 						 coll)))
+
+(defn map-vec [f coll] (to-vec (map f coll)))
 
 (defn flatten-1
 	"Flattens only the first level of a given sequence, e.g. [[1 2][3]] becomes
@@ -235,3 +239,23 @@
 (defn static-fn [result] (ignore-args result))
 
 (defn remove-nil [col] (remove nil? col))
+
+(defn de-nest [arg]
+	(walk/postwalk
+		(fn [form]
+			(if (sequential? form)
+				(to-vec (flatten-1
+									(coll-vectorize
+										(fn [x] (not (and (sequential? x) (sequential? (first x))))) form)))
+				form))
+		arg))
+
+(defn hiccupify [intermetiate-result]
+	(walk/postwalk
+		(fn [form]
+			(if (and (sequential? form) (not (fn? (first form))))
+				(to-vec (flatten-1
+									(coll-vectorize
+										(fn [x] (not (and (sequential? x) (or (sequential? (first x)) (empty? x))))) form)))
+				form))
+		intermetiate-result))
