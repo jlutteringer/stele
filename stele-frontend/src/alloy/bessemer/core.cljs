@@ -218,7 +218,7 @@
 		(fn [{:keys [body display] :as args}]
 			(println display)
 			[:div.overlay-container
-			 (when @display [:div.modal-backdrop.fade.in])
+			 (when display [:div.modal-backdrop.fade.in])
 			 body])
 		:schema overlay-schema
 		:static))
@@ -227,13 +227,13 @@
 								 :title "Additional Content"
 								 :description "Alerts can also contain additional HTML elements like headings and paragraphs.")
 
-(defonce toggle (reagent/atom true))
-(doc/add-example [(let []
-										[:div
-										 [button "Toggle Backdrop" :large :click #(do (println "clicked!" @toggle) (swap! toggle not))]
-										 [:br][:br]
-										 [overlay [[:div.card.card-block
-																[:p "This is an example with some content"]
-																[:p "More content!"]
-																[button "A Button" :large]]]
-											:display toggle]])])
+(def toggle (reagent/atom false))
+
+(doc/add-example :example [:div
+													 [button "Toggle Backdrop" :large :click #(do (println "clicked!" @toggle) (swap! toggle not))]
+													 [:br][:br]
+													 [overlay [[:div.card.card-block
+																			[:p "This is an example with some content"]
+																			[:p "More content!"]
+																			[button "A Button" :large]]]
+														:display @toggle]])

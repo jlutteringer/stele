@@ -205,6 +205,9 @@
 (defn make-fn [schema f]
 	(make-fn-scaffolding schema (fn [_ reified-args] (f reified-args))))
 
+(defn make-constructor [schema]
+	(make-fn-scaffolding schema (fn [_ reified-args] reified-args)))
+
 (def component-handler-schema
 	(substantiate-schema [::component-handler
 												:fields [[:key :schema]

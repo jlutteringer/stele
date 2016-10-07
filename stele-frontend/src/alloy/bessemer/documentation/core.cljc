@@ -72,15 +72,21 @@
 									(fn [example]
 										(register-example-component global-section-registry example))))
 
+(def example (schema/make-constructor example-component-schema))
+
 (def def-example
 	(schema/make-fn example-section-schema
 									(fn [example]
 										(register-example-section global-section-registry example))))
 
+(def example-section (schema/make-constructor example-section-schema))
+
 (def def-sub-section
 	(schema/make-fn sub-section-schema
 									(fn [sub-section]
 										(register-sub-section global-section-registry sub-section))))
+
+(def sub-section (schema/make-constructor sub-section-schema))
 
 (def schema-section-schema
 	(schema/substantiate-schema [::schema-section
@@ -96,5 +102,7 @@
 	(schema/make-fn section-schema
 									(fn [section]
 										(register-section global-section-registry :fake-key section))))
+
+(def section (schema/make-constructor section-schema))
 
 (defn sections [registry & namespaces] (vals @(:registry registry)))
