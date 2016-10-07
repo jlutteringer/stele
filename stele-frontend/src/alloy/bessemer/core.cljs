@@ -227,13 +227,12 @@
 								 :title "Additional Content"
 								 :description "Alerts can also contain additional HTML elements like headings and paragraphs.")
 
-(def toggle (reagent/atom false))
-
-(doc/add-example :example [:div
-													 [button "Toggle Backdrop" :large :click #(do (println "clicked!" @toggle) (swap! toggle not))]
-													 [:br][:br]
-													 [overlay [[:div.card.card-block
-																			[:p "This is an example with some content"]
-																			[:p "More content!"]
-																			[button "A Button" :large]]]
-														:display @toggle]])
+(doc/add-example :example [(let [toggle (reagent/atom false)]
+														 (fn [] [:div
+																		 [button "Toggle Backdrop" :large :click #(do (println "clicked!" @toggle) (swap! toggle not))]
+																		 [:br][:br]
+																		 [overlay [[:div.card.card-block
+																								[:p "This is an example with some content"]
+																								[:p "More content!"]
+																								[button "A Button" :large]]]
+																			:display @toggle]]))])
