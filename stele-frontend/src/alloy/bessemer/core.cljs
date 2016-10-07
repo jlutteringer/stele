@@ -64,13 +64,14 @@
 																								[:type :default :primary :layout-type [:enumerated button-types]]
 																								[:outline :default false :layout-type :flag]
 																								[:size :default :default :layout-type [:enumerated button-sizes]]
-																								[:disabled :default false :layout-type :flag]]]))
+																								[:disabled :default false :layout-type :flag]
+																								[:click :default util/empty-fn]]]))
 
 (doc/def-schema-section button-schema
 												:description "Use Bootstrap’s custom button styles for actions in forms, dialogs, and more. Includes support for a handful of contextual variations, sizes, states, and more.")
 (def button
 	(butil/component
-		(fn [{:keys [label type outline size disabled] :as args}]
+		(fn [{:keys [label type outline size disabled click] :as args}]
 			(if (string? label)
 				[:button (butil/make-attributes
 									 args
@@ -80,7 +81,8 @@
 															(= :default size) ""
 															(= :large size) "btn-lg"
 															(= :small size) "btm-sm"
-															(= :block size) "btn-block")]}
+															(= :block size) "btn-block")]
+										:on-click (butil/handler-fn click)}
 									 (when disabled
 										 {:disabled "disabled"})) label]
 				(butil/make-merged-element label anchor-schema args {:class ["btn" (str "btn-" (name type))]})))
@@ -204,3 +206,34 @@
 									 [alert :body "Heads up! This alert needs your attention, but it's not super important." :info]
 									 [alert :body "Warning! Better check yourself, you're not looking too good." :warning]
 									 [alert :body "Oh snap! Change a few things up and try submitting again." :danger]]])
+
+(def overlay-schema (butil/web-element [::overlay
+																				 :name "Overlay"
+																				 :fields [[:body :primary]
+																									[:display :default false]]]))
+(doc/def-schema-section overlay-schema)
+
+(def overlay
+	(butil/component
+		(fn [{:keys [body display] :as args}]
+			(println display)
+			[:div.overlay-container
+			 (when @display [:div.modal-backdrop.fade.in])
+			 body])
+		:schema overlay-schema
+		:static))
+
+(doc/def-example ::additional-content
+								 :title "Additional Content"
+								 :description "Alerts can also contain additional HTML elements like headings and paragraphs.")
+
+(defonce toggle (reagent/atom true))
+(doc/add-example [(let []
+										[:div
+										 [button "Toggle Backdrop" :large :click #(do (println "clicked!" @toggle) (swap! toggle not))]
+										 [:br][:br]
+										 [overlay [[:div.card.card-block
+																[:p "This is an example with some content"]
+																[:p "More content!"]
+																[button "A Button" :large]]]
+											:display toggle]])])

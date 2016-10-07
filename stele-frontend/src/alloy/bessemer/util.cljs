@@ -4,6 +4,7 @@
 						[alloy.anvil.clojure.schema :as schema]
 						[reagent.impl.template :as r-template]))
 
+(defn handler-fn [f] (fn [& args] (apply f args) nil))
 (defn as-form [element] (if (fn? element) (element) element))
 
 (defn as-element [element]
@@ -24,7 +25,8 @@
 	(let [{:keys [template] :as substantiated-args} (schema/substantiate args schema/component-handler-schema)]
 		(schema/component-handler
 			(assoc substantiated-args :template
-																(fn [& args] (util/hiccupify (apply template args)))))))
+																(fn [& args]
+																	(util/hiccupify (apply template args)))))))
 
 (defn merge-elements [& args]
 	(util/map-concat-strategy web-element-merge-strategy args))

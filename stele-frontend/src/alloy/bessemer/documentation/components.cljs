@@ -16,8 +16,7 @@
 				 [:div.documentation
 					[:pre
 					 (util/concat-vec :code.clojure (parse/clojure-to-hiccup source))]])])
-		:schema doc/example-component-schema
-		:static))
+		:schema doc/example-component-schema))
 
 (def sub-section
 	(butil/component
@@ -27,15 +26,13 @@
 			 [:p description]
 			 [:div.documentation-examples
 				(map (fn [{:keys [key title description examples additional-content]}]
-							 (println description)
 							 [:div.documentation-example
 								[:h2 title]
 								(if (string? description) [:p description] description)
 								[:div (map #(-> [alloy.bessemer.documentation.components/example %]) examples)]
 								additional-content])
 						 components)]])
-		:schema doc/sub-section-schema
-		:static))
+		:schema doc/sub-section-schema))
 
 (def section
 	(butil/component
@@ -51,8 +48,7 @@
 					(util/map-vec #(-> [sub-section %]) sub-sections)
 					:size 9]
 				 [b/col "Sidebar"]]]])
-		:schema doc/section-schema
-		:static))
+		:schema doc/section-schema))
 
 (def bessemer-documentation-site-schema
 	(schema/substantiate-schema [::bessemer-documentation-site
@@ -62,5 +58,4 @@
 	(butil/component
 		(fn [{:keys [sections]}]
 			[:div.bessemer (util/map-vec #(-> [section %]) sections)])
-		:schema bessemer-documentation-site-schema
-		:static))
+		:schema bessemer-documentation-site-schema))

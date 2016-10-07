@@ -237,6 +237,7 @@
 (defn valueate [x] (if (fn? x) (x) x))
 (defn ignore-args [x] (fn [& _] (valueate x)))
 (defn static-fn [result] (ignore-args result))
+(def empty-fn (static-fn nil))
 
 (defn remove-nil [col] (remove nil? col))
 
