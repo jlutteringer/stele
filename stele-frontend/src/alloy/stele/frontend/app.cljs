@@ -1,6 +1,7 @@
 (ns alloy.stele.frontend.app
 	(:require [alloy.stele.frontend.components :as components]
 						[alloy.bessemer.core :as b]
+						[alloy.bessemer.component.card :as card]
 						[alloy.bessemer.documentation.core :as doc]
 						[alloy.bessemer.documentation.components :as doc-components]
 						[alloy.anvil.clojure.parse :as parse]

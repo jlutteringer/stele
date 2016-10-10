@@ -1,4 +1,4 @@
-(ns alloy.bessemer.components.dropdown
+(ns alloy.bessemer.component.dropdown
 	(:require-macros [re-com.core :refer [handler-fn]])
 	(:require [cljs.spec :as spec :include-macros true]
 						[alloy.anvil.clojure.util :as util :include-macros true]

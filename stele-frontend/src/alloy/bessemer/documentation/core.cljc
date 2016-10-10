@@ -1,7 +1,8 @@
 (ns alloy.bessemer.documentation.core
 	(:require [alloy.anvil.clojure.util :as util]
 						[alloy.anvil.clojure.schema :as schema]
-						[com.rpl.specter :as specter #?@(:cljs (:include-macros true))]))
+						[com.rpl.specter :as specter #?@(:cljs (:include-macros true))]
+						[taoensso.timbre :as timbre #?@(:cljs (:include-macros true))]))
 
 (def example-component-schema
 	(schema/substantiate-schema [::example-component
@@ -37,6 +38,13 @@
 
 (defonce global-section-registry (empty-registry))
 
+(defn use-section
+	([section-key] (use-section global-section-registry section-key))
+	([registry section-key]
+	 (reset! (-> registry :targets :section-key) section-key)
+	 (reset! (-> registry :targets :sub-section-key) nil)
+	 (reset! (-> registry :targets :example-section-key) nil)))
+
 (defn register-example-component [registry example]
 	(reset! (:registry registry)
 					(specter/transform [@(-> registry :targets :section-key)
@@ -60,12 +68,12 @@
 (defn register-sub-section [registry sub-section]
 	(reset! (-> registry :registry)
 					(specter/transform [@(-> registry :targets :section-key)
-															:sub-sections] (fn [x] (util/concat-vec x sub-section)) @(:registry registry)))
+															:sub-sections] (fn [x] (util/concat-vec (remove #(= (:key sub-section) (:key %)) x) sub-section)) @(:registry registry)))
 	(reset! (-> registry :targets :sub-section-key) (:key sub-section)))
 
 (defn register-section [registry key section]
 	(reset! (-> registry :registry) (assoc @(:registry registry) key section))
-	(reset! (-> registry :targets :section-key) key))
+	(use-section registry key))
 
 (def add-example
 	(schema/make-fn example-component-schema
@@ -101,7 +109,7 @@
 (def def-section
 	(schema/make-fn section-schema
 									(fn [section]
-										(register-section global-section-registry :fake-key section))))
+										(register-section global-section-registry (:key section) section))))
 
 (def section (schema/make-constructor section-schema))
 

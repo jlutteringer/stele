@@ -54,3 +54,5 @@
 		 (schema/substantiate (rest raw-element) schema)
 		 (filter-web-attributes merge-element)
 		 additions)])
+
+(defn component-type? [component type] (= (first component) type))

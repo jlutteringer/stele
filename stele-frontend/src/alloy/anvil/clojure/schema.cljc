@@ -162,8 +162,8 @@
 
 (defn mapify-args [args schema]
 	(if (and (= (count args) 1)
-					 (or (map? (first args)) (vector? (first args))))
-		(mapify (first args) schema)
+					 (or (map? (first args))))
+		(first args)
 		(mapify args schema)))
 
 (defn substantiate-map [mapified-args schema] (apply-defaults mapified-args schema))

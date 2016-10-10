@@ -27,6 +27,8 @@
 	(println "DEBUG" arg)
 	arg)
 
+(defn pair? [val] (and (sequential? val) (= 2 (count val))))
+
 (defn to-vec [col] (into [] col))
 (defn to-set [col] (into #{} col))
 

@@ -1,6 +1,6 @@
 (ns alloy.stele.frontend.components
 	(:require [alloy.anvil.clojure.util :as util]
-						[alloy.bessemer.components.dropdown :as dropdown]
+						[alloy.bessemer.component.dropdown :as dropdown]
 						[reagent.core :as reagent]
 						[reagent.impl.template :as r-template]
 						[re-frame.core :as re-frame]

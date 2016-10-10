@@ -27,10 +27,19 @@
 		:schema col-schema
 		:static))
 
+(def image-schema (butil/web-element [::image
+																			:fields [[:uri :primary]]]))
+(def image
+	(butil/component
+		(fn [{:keys [uri] :as args}]
+			[:img (butil/make-attributes args {:src uri})])
+		:schema image-schema
+		:static))
+
 (def anchor-schema (butil/web-element [::anchor
 																			 :name "Anchors"
 																			 :fields [[:label :primary]
-																								[:uri]]]))
+																								[:uri :default "#"]]]))
 (doc/def-schema-section anchor-schema
 												:description "Use Bootstrap’s custom button styles for actions in forms, dialogs, and more. Includes support for a handful of contextual variations, sizes, states, and more.")
 (def anchor
@@ -207,19 +216,51 @@
 									 [alert :body "Warning! Better check yourself, you're not looking too good." :warning]
 									 [alert :body "Oh snap! Change a few things up and try submitting again." :danger]]])
 
+
+;TODO evaluate the data types used for breadcrumbs... pairs might not make the best sense, some combination with anchors?
+(def breadcrumb-schema (butil/web-element [::breadcrumb
+																					 :name "Breadcrumb"
+																					 :fields [[:breadcrumbs :primary]]]))
+(doc/def-schema-section breadcrumb-schema
+												:description "Indicate the current page’s location within a navigational hierarchy. Separators are automatically added in CSS through ::before and content.")
+(def breadcrumb
+	(butil/component
+		(fn [{:keys [breadcrumbs]}]
+			[:ol.breadcrumb
+			 (map-indexed (fn [i val]
+											(let [active (= i (dec (count breadcrumbs)))]
+												[:li.breadcrumb-item
+												 (when active {:class "active"})
+												 (if (util/pair? val)
+													 (if active
+														 (first val)
+														 [anchor (first val) :uri (second val)])
+													 val)])) breadcrumbs)])
+		:schema breadcrumb-schema
+		:static))
+
+(doc/def-example ::examples :title "Examples")
+
+(doc/add-example [[:div
+									 [breadcrumb :breadcrumbs [["Home" "#"]]]
+									 [breadcrumb :breadcrumbs [["Home" "#"] ["Home" "#"]]]
+									 [breadcrumb :breadcrumbs ["Home" "Home" ["Home" "#"]]]]])
+
+
 (def overlay-schema (butil/web-element [::overlay
 																				 :name "Overlay"
 																				 :fields [[:body :primary]
 																									[:display :default false]]]))
-(doc/def-schema-section overlay-schema)
+(doc/def-schema-section overlay-schema
+												:description "Desc")
 
 (def overlay
 	(butil/component
 		(fn [{:keys [body display] :as args}]
 			(println display)
 			[:div.overlay-container
-			 (when display [:div.modal-backdrop.fade.in])
-			 body])
+			 body
+			 (when display [:div.modal-backdrop.fade.in])])
 		:schema overlay-schema
 		:static))
 
@@ -229,9 +270,64 @@
 
 (doc/add-example :example [(let [toggle (reagent/atom false)]
 														 (fn [] [:div
-																		 [button "Toggle Backdrop" :large :click #(do (println "clicked!" @toggle) (swap! toggle not))]
+																		 [button "Toggle Overlay" :large :click #(swap! toggle not)]
 																		 [:br][:br]
 																		 [overlay [[:div.card.card-block
+																								[:p "This is an example with some content"]
+																								[:p "More content!"]
+																								[button "A Button" :large]]]
+																			:display @toggle]]))])
+
+(def portal-schema (butil/web-element [::portal
+																				:name "Portal"
+																				:fields [[:body :primary]
+																								 [:display :default false]]]))
+(def portal
+	(butil/component
+		(fn [{:keys [body display] :as args}]
+			(when display
+				[:div.modal.fade.in {:style {:display "block"}}
+				 [:div.modal-dialog
+					[:div.modal-content
+					 body]]]))
+		:schema portal-schema
+		:static))
+
+(doc/add-example :example [(let [toggle (reagent/atom false)]
+														 (fn [] [:div
+																		 [button "Toggle Portal" :large :click #(swap! toggle not)]
+																		 [:br][:br]
+																		 [overlay [[:div.card.card-block
+																								[portal
+																								 [[:div.modal-body
+																									 [:p "A portal!"]
+																									 [button "Another Button" :large]]] :display @toggle]
+																								[:p "This is an example with some content"]
+																								[:p "More content!"]
+																								[button "A Button" :large]]]
+																			:display @toggle]]))])
+
+(def modal-schema (butil/web-element [::modal
+																			 :name "Modal"
+																			 :fields [[:body :primary]
+																								[:display :default false]]]))
+(def modal
+	(butil/component
+		(fn [{:keys [body display] :as args}]
+			[portal [
+							 [:div.modal-body body]]
+			 :display display])
+		:schema modal-schema
+		:static))
+
+(doc/add-example :example [(let [toggle (reagent/atom false)]
+														 (fn [] [:div
+																		 [button "Toggle Modal" :large :click #(swap! toggle not)]
+																		 [:br][:br]
+																		 [overlay [[:div.card.card-block
+																								[modal
+																								 [[:p "A portal!"]
+																									[button "Another Button" :large]] :display @toggle]
 																								[:p "This is an example with some content"]
 																								[:p "More content!"]
 																								[button "A Button" :large]]]

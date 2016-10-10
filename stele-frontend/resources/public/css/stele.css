@@ -85,6 +85,10 @@
 	background: none;
 }
 
+.bessemer-example .card {
+	max-width: 20rem;
+}
+
 .bessemer-section-header {
 	color: #cdbfe3;
 	background-color: #563d7c;
