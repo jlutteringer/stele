@@ -3,6 +3,7 @@
   (:require [clojure.walk :as walk]
             [taoensso.timbre :as timbre #?@(:cljs (:include-macros true))]
             [com.rpl.specter :as specter #?@(:cljs (:include-macros true))]
+            [clojure.spec :as spec #?@(:cljs (:include-macros true))]
     #?(:clj
             [clojure.spec :as spec]
        :cljs [cljs.spec :as spec])))
@@ -97,6 +98,9 @@
              coll)))
 
 (defn map-vec [f coll] (to-vec (map f coll)))
+
+(defn map-build [& args]
+  (map-convert-pairs (filter some? args)))
 
 (defn flatten-1
   "Flattens only the first level of a given sequence, e.g. [[1 2][3]] becomes
@@ -263,3 +267,58 @@
                     (fn [x] (not (and (sequential? x) (or (sequential? (first x)) (empty? x))))) form)))
         form))
     intermetiate-result))
+
+
+(spec/def ::any (static-fn true))
+(spec/def ::keyword keyword?)
+(spec/def ::string string?)
+(spec/def ::map map?)
+(spec/def ::boolean boolean?)
+(spec/def ::spec-def (some-fn keyword? set? fn?))
+(spec/def ::vector vector?)
+(spec/def ::fn fn?)
+
+(defn element-processor [& processors]
+  (fn [result sequence]
+    (loop [processor-chain processors
+           result result
+           target-sequence sequence
+           skipping-sequence target-sequence]
+      (cond
+        (or (empty? target-sequence) (empty? skipping-sequence))
+          ; we're done, either skipping every value or processed entire seq
+          [result target-sequence]
+        (empty? processor-chain)
+          ; all processors in the chain have skipped, so we've officially skipped the first value
+          (recur processors result target-sequence (rest skipping-sequence))
+        :else
+        (let [[result processor-sequence] ((first processor-chain) (first skipping-sequence) [result target-sequence skipping-sequence])]
+          (cond
+            (= processor-sequence ::halt)
+              ; processor signals halt, abort processing with current state of result
+              [result nil]
+            (= processor-sequence ::skip)
+              ; processor signals skip, move to next processor with current values
+              (recur (rest processor-chain) result target-sequence skipping-sequence)
+            :else
+              ; processor returned sequence value, reset processing chain, reset skip sequence, and adopt new target sequence
+              (recur processors result processor-sequence processor-sequence)))))))
+
+(defn iteration-process [& sequence-processors]
+  (fn [iterable initial-result]
+    (loop [processor-chain sequence-processors
+           [result sequence] [initial-result iterable]
+           previous-vals nil]
+      (cond
+        (empty? sequence) result
+
+        (empty? processor-chain)
+          (if (= [result sequence] previous-vals)
+            [result sequence]
+            (recur sequence-processors [result sequence] [result sequence]))
+
+        :else (recur (rest processor-chain) ((first processor-chain) result sequence) previous-vals)))))
+
+(defn append-result [result processor-seq context])
+(defn skip [context])
+(defn halting-error [error])
