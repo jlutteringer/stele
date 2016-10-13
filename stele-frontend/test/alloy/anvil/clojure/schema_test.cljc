@@ -4,12 +4,12 @@
 
 (test/is
   (=
-    (schema/substantiate-schema [::example-component
-                                 :fields [[:key :primary]
-                                          [:title]
-                                          [:example]
-                                          [:source]
-                                          [:additional-content]]])
+    (schema/schema-args-to-map-v2 [::example-component
+                                   :fields [[:key :primary]
+                                            [:title]
+                                            [:example]
+                                            [:source]
+                                            [:additional-content]]] schema/schema-schema)
     {:key    ::example-component
      :name   "example-component"
      :fields [{:key :key :layout-type :primary}
@@ -20,5 +20,10 @@
 
 (test/is
   (=
-    (schema/substantiate [:schema :primary] schema/schema-field-schema)
+    (schema/schema-args-to-map-v2 [:schema :primary] schema/schema-field-schema)
     {:key :schema :layout-type :primary}))
+
+(test/is
+  (=
+    (schema/schema-args-to-map-v2[::example-component :name "Name"] schema/schema-schema)
+    {:key ::example-component :name "Name"}))

@@ -15,7 +15,7 @@
        (when (some? source)
          [:div.documentation
           [:pre
-           (util/concat-vec :code.clojure (parse/clojure-to-hiccup source))]])])
+           [:code.clojure (parse/clojure-to-hiccup source)]]])])
     :schema doc/example-component-schema
     :static))
 
@@ -47,7 +47,7 @@
        [b/container
         [:div.row
          [b/col
-          (util/map-vec #(-> [sub-section %]) sub-sections)
+          (map #(-> [sub-section %]) sub-sections)
           :size 9]
          [b/col "Sidebar"]]]])
     :schema doc/section-schema

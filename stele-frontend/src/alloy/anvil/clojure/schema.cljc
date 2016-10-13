@@ -124,38 +124,86 @@
 ;
 ;(defn sequence-parser [result sequence] [result sequence])
 
-(defn finalize-token [token value type context]
-  (util/append-result [token value] ["updated-seq"] context))
+(defn build-select-query [token type seq]
+  (let [token-pred #(= (first %) token)
+        token-query (specter/filterer token-pred)
+        concrete-token  (specter/select-one [token-query specter/FIRST] seq)]
 
-(defn gather-must-pick-options [token context])
+    (specter/multi-path
+      ;if we're removing a value, we need to remove the corresponding strong-key tag
+      (if (contains? (second concrete-token) :value)
+        [(specter/srange-dynamic
+           (fn [form] (dec (util/find-index token-pred form)))
+           (fn [form] (util/find-index token-pred form)))
+         specter/FIRST
+         specter/LAST
+         (specter/filterer #(contains? #{:strong-key :weak-key :key} (first %)))
+         (specter/terminal specter/NONE)]
+        [specter/STOP])
+
+      ;remove the token itself
+      [token-query (specter/terminal specter/NONE)]
+
+      ;remove the corresponding value token if we're removing a key
+      (if (contains? #{:strong-key :weak-key :key} type)
+        [(specter/filterer (fn [item] (= (-> item second :value :key) token))) (specter/terminal specter/NONE)]
+        [specter/STOP])
+
+      ;if we're selecting a primary token, remove all of the other primary tags
+      (if (= :primary type)
+        [specter/ALL specter/LAST (specter/filterer (fn [item] (= (first item) :primary))) (specter/terminal specter/NONE)]
+        [specter/STOP])
+
+      ;remove all tags referring to the token
+      [specter/ALL specter/LAST (specter/filterer (fn [item] (= (:key (second item)) token))) (specter/terminal specter/NONE)]
+
+      ;clean up some of our nulls that we leave around
+      [specter/ALL specter/LAST (specter/terminal (fn [m] (util/map-convert-pairs (filter #(or (some? (first %)) (some? (second %))) m))))])))
+
+(defn select-token [token type seq]
+  (filter some? (specter/multi-transform
+                  (build-select-query token type seq)
+                  seq)))
+
+(defn finalize-token [type context]
+  (let [token (util/get-current context)
+        val-token  (if (contains? #{:strong-key :weak-key :key} type)
+                     (util/get-next context)
+                     token)
+        target-seq (second context)]
+
+    (util/append-result [(-> token second type :key) (first val-token)]
+                        (select-token (first token) type target-seq)
+                        context)))
+
+(defn gather-must-pick-options [token context] [])
 
 (defn general-element-processor [[token tags] context]
   (cond
-    (= 0 (count tags)) (util/halting-error "Oh no!")
-    (= 1 (count tags)) (let [[tag value] (first tags)]
-                         (finalize-token token value tag context))
+    (= 0 (count tags)) (util/halting-error (str "No availabile tags for token" token "halting processing"))
+    (= 1 (count tags)) (let [[tag _] (first tags)]
+                         (finalize-token tag context))
     :else
       (let [must-pick-options (gather-must-pick-options token context)]
         (cond
-          (> 1 (count must-pick-options)) (util/halting-error "Oh no!")
-          (= 1 (count must-pick-options)) (let [[tag value] (first must-pick-options)]
-                                            (finalize-token token value tag context))
+          (< 1 (count must-pick-options)) (util/halting-error (str "We have more than one 'must pick' option in options " must-pick-options))
+          (= 1 (count must-pick-options)) (let [[tag _] (first must-pick-options)]
+                                            (finalize-token tag context))
           :else (util/skip context)))))
 
 (defn finalizing-tag-processor [tag]
-  (fn [[token tags] context]
+  (fn [[_ tags] context]
     (if (contains? tags tag)
-      (finalize-token token (get tags tag) tag context)
+      (finalize-token tag context)
       (util/skip context))))
-
-(defn key-element-processor [[token tags] context] )
 
 (def parse-tags (util/iteration-process
                   (util/element-processor
                     general-element-processor
                     (finalizing-tag-processor :flag)
-                    (finalizing-tag-processor :enumerated)
-                    key-element-processor)))
+                    (finalizing-tag-processor :enumerated))))
+
+(defn schema-args-to-map-v2 [args schema] (util/map-convert-pairs (parse-tags (tag-args args schema) [])))
 
 ;end tagging
 

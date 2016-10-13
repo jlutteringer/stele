@@ -150,6 +150,8 @@
   [f coll]
   (first (filter f coll)))
 
+(defn find-index [f coll] (first (find-first #(f (second %)) (map-indexed (fn [i x] [i x]) coll))))
+
 (defn take-even [x]
   (take-nth 2 x))
 
@@ -319,6 +321,8 @@
 
         :else (recur (rest processor-chain) ((first processor-chain) result sequence) previous-vals)))))
 
-(defn append-result [result processor-seq context])
-(defn skip [context])
-(defn halting-error [error])
+(defn append-result [result processor-seq [result-seq _ _]] [(conj result-seq result) processor-seq])
+(defn skip [[result _ _]] [result ::skip])
+(defn halting-error [error] [error ::halt])
+(defn get-current [[_ _ skipping-sequence]] (first skipping-sequence))
+(defn get-next [[_ _ skipping-sequence]] (first (next skipping-sequence)))
