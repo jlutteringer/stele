@@ -60,6 +60,6 @@
 (def bessemer-documentation-site
   (butil/component
     (fn [{:keys [sections]}]
-      [:div.bessemer (util/map-vec #(-> [section %]) sections)])
+      [:div.bessemer (util/fmap-vec #(-> [section %]) sections)])
     :schema bessemer-documentation-site-schema
     :static))

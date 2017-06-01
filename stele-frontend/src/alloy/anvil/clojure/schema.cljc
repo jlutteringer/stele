@@ -21,7 +21,7 @@
 (spec/def ::schema-field.layout-type schema-layout-types)
 
 (def schema-field-schema
-  {:key        :schema-field
+  {:key         :schema-field
    :name        "Schema Field"
    :description "This is a description"
    :fields      [{:key :key :description "The unique (per schema) key of the schema field" :layout-type :primary :required true :spec ::util/keyword}
@@ -47,149 +47,111 @@
 (defn group-fields-by-layouts [schema]
   (util/filter-groups schema-layout-types #(filter-fields-by-layout % schema)))
 
-; TODO 'tagging' is a wip for more intelligent schema resolution, replacing build-arg-pairs
-; this should reduce the need to disambiguate in some cases, and we should be able to provide
-; better error handling when the resolution mechanism fails
 (defn tag-args [args schema]
   (let [field-keys (get-field-keys schema)
         layout-to-field-map
         (specter/multi-transform (specter/multi-path
                                    [specter/MAP-VALS specter/ALL (specter/terminal #(-> [(:key %) %]))]
-                                   [specter/MAP-VALS (specter/terminal util/map-convert-pairs)])
+                                   [specter/MAP-VALS (specter/terminal util/map-from-pairs)])
                                  (group-fields-by-layouts schema))
         {:keys [default]} layout-to-field-map]
-    (util/map-contextual
+    (util/fmap-contextual
       (fn [arg context]
         (let [arg-field (get-field arg schema)
               previous-context (second (first context))
               potential-enumerated-val
               (util/find-first (fn [entry] (contains? (second (:layout-type (second entry))) arg))
                                (specter/select [:enumerated specter/ALL] layout-to-field-map))]
-          [arg (util/map-build
-                 (when (contains? previous-context :weak-key) [:value (:weak-key previous-context)])
-                 (when (contains? previous-context :strong-key) [:value (:strong-key previous-context)])
-                 (when (util/not-empty? (:primary layout-to-field-map)) [:primary (get-field (first (keys (:primary layout-to-field-map))) schema)])
+          [arg (util/->map-from-pairs
+                 (when (contains? previous-context :weak-key)
+                   [:value (:weak-key previous-context)])
+                 (when (contains? previous-context :strong-key)
+                   [:value (:strong-key previous-context)])
+                 (when (and (empty? context) (util/not-empty? (:primary layout-to-field-map)))
+                   [:primary (get-field (first (keys (:primary layout-to-field-map))) schema)])
                  (cond
                    (contains? default arg) [:strong-key arg-field]
                    (contains? field-keys arg) [:weak-key arg-field])
-                 (when (contains? (:flag layout-to-field-map) arg) [:flag arg-field])
-                 (when (some? potential-enumerated-val) [:enumerated (get-field (first potential-enumerated-val) schema)]))]))
+                 (when (contains? (:flag layout-to-field-map) arg)
+                   [:flag arg-field])
+                 (when (some? potential-enumerated-val)
+                   [:enumerated (get-field (first potential-enumerated-val) schema)]))]))
       args)))
 
-;(defn magic-next [context] )
-;(defn magic-return [val updated-context] )
-;(defn magic-cond)
-;(defn magic-do-nothing)
-;(defn magic-error)
-;
-;(defn required? [key] )
-;(defn finalize-token [token type context])
-;(defn remove-token-tag [token type context])
-;(defn other-options? [current-token field context])
-;(defn gather-must-pick-options [token context])
-;
-;(defn foo [[token {:keys [weak-key strong-key primary flag enumerated] :as tags}] context]
-;  (magic-cond
-;    (= 1 (count tags)) (let [[tag value] (first tags)]
-;                         (magic-return [token value] (finalize-token token tag context)))
-;    (some? strong-key)
-;      (let [[next-token next-tags] (magic-next context)]
-;        (if (contains? next-tags :value)
-;          (if (= (count next-tags) 1)
-;            (magic-return [token next-token] (finalize-token token :key context))
-;            (magic-do-nothing))
-;          (remove-token-tag token :strong-key context)))
-;
-;    (some? enumerated)
-;      (if (other-options? token enumerated context) (skip?)
-;                                                    (if (required? enumerated) ))))
-;
-;(defn general-element-parser [[token {:keys [weak-key strong-key primary flag enumerated] :as tags}] context]
-;  (magic-cond
-;    (= 0 (count tags)) (magic-error)
-;    (= 1 (count tags)) (let [[tag value] (first tags)]
-;                         (magic-return [token value] (finalize-token token tag context)))
-;    :else
-;      (let [must-pick-options (gather-must-pick-options token context)]
-;        (magic-cond
-;          (> 1 (count must-pick-options)) (magic-error)
-;          (= 1 (count must-pick-options)) (magic-return [token (second (first must-pick-options))]
-;                                                        (finalize-token token (first (first must-pick-options)) context))
-;          :else nil))))
-;
-;(defn enumeration-element-parser [[token {:keys [weak-key strong-key primary flag enumerated] :as tags}] context]
-;  (magic-return [token enumerated] (finalize-token token :enumerated context)))
-;
-;(defn element-parser [])
-;
-;(defn sequence-parser [result sequence] [result sequence])
-
-(defn build-select-query [token type seq]
+(defn build-token-select-transformations-internal [token type seq]
+  (println "build select paths")
+  (println token)
+  (println type)
+  (println seq)
   (let [token-pred #(= (first %) token)
         token-query (specter/filterer token-pred)
-        concrete-token  (specter/select-one [token-query specter/FIRST] seq)]
-
-    (specter/multi-path
-      ;if we're removing a value, we need to remove the corresponding strong-key tag
-      (if (contains? (second concrete-token) :value)
+        concrete-token (specter/select-one [token-query specter/FIRST] seq)]
+    (util/->vec
+      (when (contains? (second concrete-token) :value)
         [(specter/srange-dynamic
            (fn [form] (dec (util/find-index token-pred form)))
            (fn [form] (util/find-index token-pred form)))
          specter/FIRST
          specter/LAST
          (specter/filterer #(contains? #{:strong-key :weak-key :key} (first %)))
-         (specter/terminal specter/NONE)]
-        [specter/STOP])
+         (specter/terminal specter/NONE)])
 
-      ;remove the token itself
-      [token-query (specter/terminal specter/NONE)]
+      [[token-query (specter/terminal specter/NONE)]]
 
-      ;remove the corresponding value token if we're removing a key
-      (if (contains? #{:strong-key :weak-key :key} type)
-        [(specter/filterer (fn [item] (= (-> item second :value :key) token))) (specter/terminal specter/NONE)]
-        [specter/STOP])
-
-      ;if we're selecting a primary token, remove all of the other primary tags
-      (if (= :primary type)
-        [specter/ALL specter/LAST (specter/filterer (fn [item] (= (first item) :primary))) (specter/terminal specter/NONE)]
-        [specter/STOP])
+      (when (= :primary type)
+        [specter/ALL specter/LAST (specter/filterer (fn [item] (= (first item) :primary))) (specter/terminal specter/NONE)])
 
       ;remove all tags referring to the token
-      [specter/ALL specter/LAST (specter/filterer (fn [item] (= (:key (second item)) token))) (specter/terminal specter/NONE)]
+      [specter/ALL specter/LAST (specter/filterer (fn [item] (= (:key (second item)) (first token)))) (specter/terminal specter/NONE)]
 
       ;clean up some of our nulls that we leave around
-      [specter/ALL specter/LAST (specter/terminal (fn [m] (util/map-convert-pairs (filter #(or (some? (first %)) (some? (second %))) m))))])))
+      [specter/ALL specter/LAST (specter/terminal (fn [m] (util/map-from-pairs (filter #(or (some? (first %)) (some? (second %))) m))))]
+      )))
 
-(defn select-token [token type seq]
-  (filter some? (specter/multi-transform
-                  (build-select-query token type seq)
-                  seq)))
+(defn build-token-select-transformations [token type seq context]
+  (if (contains? #{:strong-key :weak-key :key} type)
+    (util/concat-vec (build-token-select-transformations-internal token type seq)
+                     (build-token-select-transformations-internal (first (util/get-next context)) :value seq))
+    (build-token-select-transformations-internal token type seq)))
+
+; this could def be more efficient
+(defn select-transform [token type seq context]
+  (util/specter-loop-transform (build-token-select-transformations token type seq context) seq))
+
+(defn select-token [token type seq context]
+  (util/debug (filter some? (select-transform token type seq context))))
+
+(defn get-token-value [token type context]
+  (cond
+    (contains? #{:strong-key :weak-key :key} type) (first (first (util/get-next context)))
+    (= type :flag) true
+    :else (first (first token))))
 
 (defn finalize-token [type context]
   (let [token (util/get-current context)
-        val-token  (if (contains? #{:strong-key :weak-key :key} type)
-                     (util/get-next context)
-                     token)
+        value (get-token-value token type context)
         target-seq (second context)]
 
-    (util/append-result [(-> token second type :key) (first val-token)]
-                        (select-token (first token) type target-seq)
+    (util/append-result [(-> token second type :key) value]
+                        (select-token (first token) type target-seq context)
                         context)))
 
 (defn gather-must-pick-options [token context] [])
 
-(defn general-element-processor [[token tags] context]
+(defn general-element-processor [[[token _] tags] context]
   (cond
-    (= 0 (count tags)) (util/halting-error (str "No availabile tags for token" token "halting processing"))
+    (= 0 (count (util/multimap-vals tags))) (util/halting-error (str "No availabile tags for token " token " halting processing"))
     (= 1 (count tags)) (let [[tag _] (first tags)]
                          (finalize-token tag context))
     :else
-      (let [must-pick-options (gather-must-pick-options token context)]
-        (cond
-          (< 1 (count must-pick-options)) (util/halting-error (str "We have more than one 'must pick' option in options " must-pick-options))
-          (= 1 (count must-pick-options)) (let [[tag _] (first must-pick-options)]
-                                            (finalize-token tag context))
-          :else (util/skip context)))))
+    (let [must-pick-options (gather-must-pick-options token context)]
+      (cond
+        (< 1 (count must-pick-options)) (util/halting-error (str "We have more than one 'must pick' option in options " must-pick-options))
+        (= 1 (count must-pick-options)) (let [[tag _] (first must-pick-options)]
+                                          (finalize-token tag context))
+        :else (util/skip context)))))
+
+(defn predictive-element-processor [[[token _] tags] context] )
 
 (defn finalizing-tag-processor [tag]
   (fn [[_ tags] context]
@@ -197,13 +159,23 @@
       (finalize-token tag context)
       (util/skip context))))
 
-(def parse-tags (util/iteration-process
-                  (util/element-processor
-                    general-element-processor
-                    (finalizing-tag-processor :flag)
-                    (finalizing-tag-processor :enumerated))))
+(defn key-tag-processor [[_ tags] context]
+  (if (util/contains-any? tags #{:strong-key :weak-key :key})
+    (finalize-token (util/contained-val tags #{:strong-key :weak-key :key}) context)
+    (util/skip context)))
 
-(defn schema-args-to-map-v2 [args schema] (util/map-convert-pairs (parse-tags (tag-args args schema) [])))
+(def parse-tags-pipeline (util/iteration-process
+                           (util/element-processor
+                             general-element-processor
+                             key-tag-processor
+                             (finalizing-tag-processor :flag)
+                             (finalizing-tag-processor :enumerated))))
+
+(defn parse-tags [tagged-args]
+  (let [unique-tags (specter/transform [specter/ALL specter/FIRST] #(-> [% (util/rand-uuid)]) tagged-args)]
+    (parse-tags-pipeline unique-tags [])))
+
+(defn schema-args-to-map-v2 [args schema] (parse-tags (tag-args args schema)))
 
 ;end tagging
 
@@ -213,7 +185,7 @@
         layout-to-field-key-map
         (specter/multi-transform (specter/multi-path
                                    [specter/MAP-VALS specter/ALL (specter/terminal #(-> [(:key %) (:args (get-layout-details %))]))]
-                                   [specter/MAP-VALS (specter/terminal util/map-convert-pairs)])
+                                   [specter/MAP-VALS (specter/terminal util/map-from-pairs)])
                                  (group-fields-by-layouts schema))]
     (reduce (fn [context val]
               (let [previous-result (first context)]
@@ -235,13 +207,13 @@
                             :else
                             (conj context [(first (keys (:primary layout-to-field-key-map))) val])))))) util/concrete-seq args)))
 
-(defn schema-args-to-map [args schema] (util/map-convert-pairs (build-arg-pairs args schema)))
+(defn schema-args-to-map [args schema] (util/map-from-pairs (build-arg-pairs args schema)))
 
 (defn build-defaults-map-from-schema-fields [fields arg-map]
-  (util/map-convert-pairs (map #(cond
-                                 (some? (:default %)) [(:key %) (:default %)]
-                                 (some? (:default-fn %)) [(:key %) ((:default-fn %) arg-map)]
-                                 :else nil) fields)))
+  (util/map-from-pairs (map #(cond
+                              (some? (:default %)) [(:key %) (:default %)]
+                              (some? (:default-fn %)) [(:key %) ((:default-fn %) arg-map)]
+                              :else nil) fields)))
 
 (defn normalize-schema-tag [schema-tag]
   (cond
@@ -257,16 +229,16 @@
 
 (defn apply-defaults [arg-map schema]
   (let [default-map-pairs (seq (apply-defaults-shallow arg-map schema))]
-    (util/map-convert-pairs (map (fn [[key value]]
-                                   (let [sub-schema-tag (normalize-schema-tag (:schema (get-field key schema)))]
-                                     (cond
-                                       (empty? sub-schema-tag)
-                                       [key value]
-                                       (= :collection (first sub-schema-tag))
-                                       [key (util/to-vec (map #(apply-defaults % (second sub-schema-tag)) value))]
-                                       :else
-                                       [key (apply-defaults value (second sub-schema-tag))])))
-                                 default-map-pairs))))
+    (util/map-from-pairs (map (fn [[key value]]
+                                (let [sub-schema-tag (normalize-schema-tag (:schema (get-field key schema)))]
+                                  (cond
+                                    (empty? sub-schema-tag)
+                                    [key value]
+                                    (= :collection (first sub-schema-tag))
+                                    [key (vec (map #(apply-defaults % (second sub-schema-tag)) value))]
+                                    :else
+                                    [key (apply-defaults value (second sub-schema-tag))])))
+                              default-map-pairs))))
 
 (defn mapify-shallow [args schema]
   (if (map? args) args (schema-args-to-map args schema)))
@@ -274,16 +246,16 @@
 ;TODO don't implement using recursion
 (defn mapify [args schema]
   (let [reified-map-pairs (seq (mapify-shallow args schema))]
-    (util/map-convert-pairs (map (fn [[key value]]
-                                   (let [sub-schema-tag (normalize-schema-tag (:schema (get-field key schema)))]
-                                     (cond
-                                       (empty? sub-schema-tag)
-                                       [key value]
-                                       (= :collection (first sub-schema-tag))
-                                       [key (util/to-vec (map #(mapify % (second sub-schema-tag)) value))]
-                                       :else
-                                       [key (mapify value (second sub-schema-tag))])))
-                                 reified-map-pairs))))
+    (util/map-from-pairs (map (fn [[key value]]
+                                (let [sub-schema-tag (normalize-schema-tag (:schema (get-field key schema)))]
+                                  (cond
+                                    (empty? sub-schema-tag)
+                                    [key value]
+                                    (= :collection (first sub-schema-tag))
+                                    [key (vec (map #(mapify % (second sub-schema-tag)) value))]
+                                    :else
+                                    [key (mapify value (second sub-schema-tag))])))
+                              reified-map-pairs))))
 
 (defn mapify-args [args schema]
   (if (and (= (count args) 1)
@@ -319,13 +291,13 @@
 (defn schema-handler [schema f] (make-fn-scaffolding schema (fn [_ reified-args] (f reified-args))))
 
 (defn build-default-overrides [current-args previous-args previous-reified-args]
-  (util/map-convert-pairs (util/remove-nil (map
-                                             #(let [current-val (get current-args %)
-                                                    prev-val (get previous-args %)]
-                                               (if (= current-val prev-val)
-                                                 [% (get previous-reified-args %)]
-                                                 nil))
-                                             (keys previous-reified-args)))))
+  (util/map-from-pairs (util/remove-nil (map
+                                          #(let [current-val (get current-args %)
+                                                 prev-val (get previous-args %)]
+                                            (if (= current-val prev-val)
+                                              [% (get previous-reified-args %)]
+                                              nil))
+                                          (keys previous-reified-args)))))
 
 (defn make-fn [schema f]
   (make-fn-scaffolding schema (fn [_ reified-args] (f reified-args))))

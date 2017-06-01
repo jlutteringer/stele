@@ -3,16 +3,16 @@
   (:require [clojure.walk :as walk]
             [taoensso.timbre :as timbre #?@(:cljs (:include-macros true))]
             [com.rpl.specter :as specter #?@(:cljs (:include-macros true))]
-            [clojure.spec :as spec #?@(:cljs (:include-macros true))]
-    #?(:clj
-            [clojure.spec :as spec]
-       :cljs [cljs.spec :as spec])))
+    #?(:clj [clojure.spec.alpha :as spec]
+       :cljs [cljs.spec :as spec :include-macros true])))
 
 ; =====================================================================
 ; =====================================================================
 ; CORE UTILITIES
 ; =====================================================================
 ; =====================================================================
+
+(defn threading-helper [f] (fn [& args] (f (filter some? args))))
 
 (def concrete-seq (filter false []))
 
@@ -31,7 +31,8 @@
 
 (defn pair? [val] (and (sequential? val) (= 2 (count val))))
 
-(defn to-vec [col] (into [] col))
+(def ->vec (threading-helper vec))
+
 (defn to-set [col] (into #{} col))
 
 (defn concat-seq [& args]
@@ -47,6 +48,54 @@
 
 (defn coll-vectorize [pred coll]
   (map (fn [x] (if (pred x) [x] x)) coll))
+
+(defn fmap-vec [f coll] (vec (map f coll)))
+
+(defn fmap-contextual [f coll]
+  (reverse (reduce
+             (fn [context val]
+               (conj context (f val context)))
+             concrete-seq
+             coll)))
+
+(defn fmap-filter [pred mapper col]  (filter pred (map mapper col)))
+
+(defn fmap-longest
+  [f default & colls]
+  (lazy-seq
+    (when (some seq colls)
+      (cons
+        (apply f (map #(if (seq %) (first %) default) colls))
+        (apply fmap-longest f default (map rest colls))))))
+
+(defn flatten-1
+  "Flattens only the first level of a given sequence, e.g. [[1 2][3]] becomes
+   [1 2 3], but [[1 [2]] [3]] becomes [1 [2] 3]."
+  [seq]
+  (if (or (not (seqable? seq)) (nil? seq))
+    seq                                                     ; if seq is nil or not a sequence, don't do anything
+    (loop [acc [] [elt & others] seq]
+      (if (nil? elt) acc
+                     (recur
+                       (if (seqable? elt)
+                         (apply conj acc elt)               ; if elt is a sequence, add each element of elt
+                         (conj acc elt))                    ; if elt is not a sequence, add elt itself
+                       others)))))
+
+(defn contained-val [target values] (some #(when (contains? target %) %) values))
+(defn contains-any? [target values] (boolean (contained-val target values)))
+
+; =====================================================================
+; =====================================================================
+; COLLECTION UTILITIES
+; =====================================================================
+; =====================================================================
+
+; =====================================================================
+; =====================================================================
+; MAP UTILITIES
+; =====================================================================
+; =====================================================================
 
 (defn map-merge-with-key
   "Returns a map that consists of the rest of the maps conj-ed onto
@@ -64,7 +113,12 @@
                    (reduce merge-entry (or m1 {}) (seq m2)))]
       (reduce merge2 maps))))
 
-(defn map-convert-pairs [pairs] (into {} pairs))
+(defn map-from-pairs [pairs] (into {} pairs))
+(def ->map-from-pairs (threading-helper map-from-pairs))
+
+(defn map-from-fmap-filter [pred mapper col]
+  (map-from-pairs
+    (fmap-filter pred mapper col)))
 
 (defn map-concat-with [f & args]
   (apply (partial map-merge-with-key f) (coll-flatten-top-with-pred sequential? args)))
@@ -77,12 +131,12 @@
 
 (defn map-concat [& args] (map-concat-with (fn [_ _ val] val) args))
 
-(defn map-filter [pred map] (map-convert-pairs (filter pred map)))
+(defn map-filter [pred map] (map-from-pairs (filter pred map)))
 
 (defn map-filter-keys [keys map]
   (map-filter (fn [[key _]] (contains? keys key)) map))
 
-(defn map-transform [f m] (map-convert-pairs (map f m)))
+(defn map-transform [f m] (map-from-pairs (map f m)))
 
 (defn map-transform-strategy [strategy map]
   (map-transform (fn [[key val]]
@@ -90,31 +144,27 @@
                      [key ((get strategy key) val)]
                      [key val])) map))
 
-(defn map-contextual [f coll]
-  (reverse (reduce
-             (fn [context val]
-               (conj context (f val context)))
-             concrete-seq
-             coll)))
+; =====================================================================
+; =====================================================================
+; MULTIMAP UTILITIES
+; =====================================================================
+; =====================================================================
 
-(defn map-vec [f coll] (to-vec (map f coll)))
+(defn multimap-from-pairs [pairs]
+  (apply (partial merge-with (fn [f s] (conj f (first s)))) (map (fn [[f s]] {f [s]}) pairs)))
 
-(defn map-build [& args]
-  (map-convert-pairs (filter some? args)))
+(def ->multimap-from-pairs (threading-helper multimap-from-pairs))
 
-(defn flatten-1
-  "Flattens only the first level of a given sequence, e.g. [[1 2][3]] becomes
-   [1 2 3], but [[1 [2]] [3]] becomes [1 [2] 3]."
-  [seq]
-  (if (or (not (seqable? seq)) (nil? seq))
-    seq                                                     ; if seq is nil or not a sequence, don't do anything
-    (loop [acc [] [elt & others] seq]
-      (if (nil? elt) acc
-                     (recur
-                       (if (seqable? elt)
-                         (apply conj acc elt)               ; if elt is a sequence, add each element of elt
-                         (conj acc elt))                    ; if elt is not a sequence, add elt itself
-                       others)))))
+(defn multimap-vals [multimap] (flatten-1 (vals multimap)))
+
+; =====================================================================
+; =====================================================================
+; OTHER UTILITIES
+; =====================================================================
+; =====================================================================
+
+(defn specter-loop-transform [paths seq]
+  (reduce (fn [seq path] (specter/multi-transform [path] seq)) seq paths))
 
 (defn flatten-2 [seq] (flatten-1 (flatten-1 seq)))
 
@@ -226,7 +276,7 @@
   (into {} (map vec (partition 2 list))))
 
 (defn filter-groups [groups filter-fn]
-  (map-convert-pairs (map #(-> [% (filter-fn %)]) groups)))
+  (map-from-pairs (map #(-> [% (filter-fn %)]) groups)))
 
 (defn third
   [coll]
@@ -254,7 +304,7 @@
   (walk/postwalk
     (fn [form]
       (if (sequential? form)
-        (to-vec (flatten-1
+        (vec (flatten-1
                   (coll-vectorize
                     (fn [x] (not (and (sequential? x) (sequential? (first x))))) form)))
         form))
@@ -264,7 +314,7 @@
   (walk/postwalk
     (fn [form]
       (if (and (sequential? form) (not (fn? (first form))))
-        (to-vec (flatten-1
+        (vec (flatten-1
                   (coll-vectorize
                     (fn [x] (not (and (sequential? x) (or (sequential? (first x)) (empty? x))))) form)))
         form))

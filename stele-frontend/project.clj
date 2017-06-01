@@ -1,7 +1,7 @@
 (defproject alloy.stele/stele-frontend "0.0.1-SNAPSHOT"
   :plugins [[lein-modules "0.3.11"] [lein-cljsbuild "1.1.1"] [lein-npm "0.6.2"]]
   :description "FIXME: write description"
-  :dependencies [[alloy.stele/stele-core :version]
+  :dependencies [[alloy.stele/stele-core "0.0.1-SNAPSHOT"]
                  [re-frame "0.8.0-alpha11"]
                  [re-com "0.8.3"]
                  [reagent "0.6.0-rc"]
@@ -9,8 +9,10 @@
                  [binaryage/devtools "0.8.1"]
                  [com.taoensso/timbre "4.7.0"]
                  [com.rpl/specter "0.13.1-SNAPSHOT"]
-                 [figwheel-sidecar "0.5.8"]
-                 [secretary "1.2.3"]]
+                 [figwheel-sidecar "0.5.10"]
+                 [secretary "1.2.3"]
+                 [mount "0.1.10"]
+                 [cljsjs/tether "1.4.0-0"]]
   :source-paths ["src" "resources/scripts"]
 
   :cljsbuild {:builds [{:id           "dev"
@@ -24,8 +26,10 @@
                                        :optimizations :none
                                        :pretty-print  true
                                        :source-map    true
+                                       :foreign-libs [{:file "js/ResizeObserver.js" :provides ["resize-observer-polyfill"]}]
                                        }}]}
   :clean-targets ^{:protect false} [:target-path "resources/public/js"]
+  :npm {:dependencies [[resize-observer-polyfill "1.4.2"]]}
   :figwheel {
              :http-server-root "public"                     ;; this will be in resources/
              :server-port      3448                         ;; default is 3449
