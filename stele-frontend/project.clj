@@ -4,7 +4,7 @@
   :dependencies [[alloy.stele/stele-core "0.0.1-SNAPSHOT"]
                  [re-frame "0.8.0-alpha11"]
                  [re-com "0.8.3"]
-                 [reagent "0.6.0-rc"]
+                 [reagent "0.6.1"]
                  [garden "1.3.2"]
                  [binaryage/devtools "0.8.1"]
                  [com.taoensso/timbre "4.7.0"]
